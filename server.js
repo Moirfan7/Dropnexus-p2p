@@ -165,21 +165,26 @@ function startServer(port) {
         console.log(`📱 Same WiFi / Phone: ${wifiUrl}/sender`);
         console.log(`==================================================\n`);
 
-        try {
-            const tunnel = await localtunnel({ port: port });
-            publicTunnelUrl = tunnel.url;
-            console.log(`==================================================`);
-            console.log(`🌍 PUBLIC INTERNET SHARE URL (Send this to your friend!):`);
-            console.log(`🔗 ${tunnel.url}`);
-            console.log(`⚠️ Note: Link will work as long as this terminal is running.`);
-            console.log(`==================================================\n`);
+        // Only run localtunnel when running locally in development mode
+        if (process.env.NODE_ENV !== 'production' && !process.env.RENDER) {
+            try {
+                const tunnel = await localtunnel({ port: port });
+                publicTunnelUrl = tunnel.url;
+                console.log(`==================================================`);
+                console.log(`🌍 PUBLIC INTERNET SHARE URL (Send this to your friend!):`);
+                console.log(`🔗 ${tunnel.url}`);
+                console.log(`⚠️ Note: Link will work as long as this terminal is running.`);
+                console.log(`==================================================\n`);
 
-            tunnel.on('close', () => {
-                publicTunnelUrl = null;
-                console.log('🔒 Public internet tunnel closed.');
-            });
-        } catch (err) {
-            console.log('⚠️ Localtunnel failed to start. Share on WiFi using:', wifiUrl);
+                tunnel.on('close', () => {
+                    publicTunnelUrl = null;
+                    console.log('🔒 Public internet tunnel closed.');
+                });
+            } catch (err) {
+                console.log('⚠️ Localtunnel skipped. Share URL:', wifiUrl);
+            }
+        } else {
+            console.log(`🌍 Cloud Deployment Mode Active! Serviced via Cloud Domain.`);
         }
     }).on('error', (err) => {
         if (err.code === 'EADDRINUSE') {
