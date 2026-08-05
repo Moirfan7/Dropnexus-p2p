@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2P File Transfer - Sender</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/sender.css">
+</head>
+<body>
+    <div class="background-globes">
+        <div class="globe globe-1"></div>
+        <div class="globe globe-2"></div>
+    </div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="brand">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>DropNexus <span>Sender</span></h1>
+                    <p>Encrypted Multi-File P2P Transfer</p>
+                </div>
+            </div>
+            <div class="connection-status-pill waiting" id="statusPill">
+                <span class="status-dot"></span>
+                <span id="statusText">Waiting for Receiver...</span>
+            </div>
+        </header>
+
+        <!-- Main Grid -->
+        <main class="main-content">
+            <!-- Left Column: File Upload & Multi-File Queue -->
+            <section class="card upload-card">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-cloud-arrow-up"></i> Select Files</h2>
+                    <span class="badge">Multi-File Queue</span>
+                </div>
+
+                <div class="drop-zone" id="dropZone">
+                    <input type="file" id="fileInput" class="file-input" multiple hidden>
+                    <div class="drop-zone-content" id="dropZonePrompt">
+                        <div class="upload-icon-wrapper">
+                            <i class="fa-solid fa-file-circle-plus"></i>
+                        </div>
+                        <h3>Drag & Drop multiple files here</h3>
+                        <p>or click to browse from your computer</p>
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">
+                            <i class="fa-solid fa-folder-open"></i> Choose Files
+                        </button>
+                    </div>
+
+                    <!-- Selected Files Queue List -->
+                    <div class="file-queue-container hidden" id="fileQueueContainer">
+                        <div class="queue-header">
+                            <span class="queue-count" id="queueCountBadge">0 Files Selected</span>
+                            <button class="btn-text danger" id="clearQueueBtn">Clear All</button>
+                        </div>
+                        <div class="queue-list" id="queueList">
+                            <!-- Items dynamically injected here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transfer Actions -->
+                <div class="action-bar">
+                    <button class="btn btn-primary btn-large" id="sendBtn" disabled>
+                        <i class="fa-solid fa-paper-plane"></i> Start Queue Transfer
+                    </button>
+                    <button class="btn btn-danger btn-large hidden" id="cancelBtn">
+                        <i class="fa-solid fa-ban"></i> Cancel Transfer
+                    </button>
+                </div>
+            </section>
+
+            <!-- Right Column: Share Link & Transfer Progress -->
+            <section class="right-column">
+                <!-- Share Link Box -->
+                <div class="card share-card">
+                    <div class="card-header">
+                        <h2><i class="fa-solid fa-share-nodes"></i> Share with Friend</h2>
+                        <span class="expiry-tag"><i class="fa-solid fa-clock"></i> Active Session</span>
+                    </div>
+
+                    <p class="share-desc">Send this link or scan QR code on phone. Link expires when server is stopped.</p>
+
+                    <div class="link-mode-tabs">
+                        <button class="tab-btn active" id="tabPublicLink"><i class="fa-solid fa-earth-americas"></i> Public Link</button>
+                        <button class="tab-btn" id="tabWifiLink"><i class="fa-solid fa-wifi"></i> WiFi Link</button>
+                    </div>
+
+                    <div class="link-input-group">
+                        <input type="text" id="shareUrlInput" readonly value="Generating share link...">
+                        <button class="btn btn-accent" id="copyLinkBtn">
+                            <i class="fa-regular fa-copy"></i> <span id="copyBtnText">Copy</span>
+                        </button>
+                    </div>
+
+                    <div class="qr-action-row">
+                        <button class="btn btn-outline" id="toggleQrBtn">
+                            <i class="fa-solid fa-qrcode"></i> Show QR Code
+                        </button>
+                        <span class="room-code-badge" id="roomCodeDisplay">ROOM: -----</span>
+                    </div>
+
+                    <!-- QR Code Display Box -->
+                    <div class="qr-container hidden" id="qrContainer">
+                        <img id="qrImage" src="" alt="Room QR Code">
+                        <p>Scan with phone camera to open receive page</p>
+                    </div>
+                </div>
+
+                <!-- Live Progress Card -->
+                <div class="card progress-card">
+                    <div class="card-header">
+                        <h2><i class="fa-solid fa-chart-line"></i> Queue Status</h2>
+                        <span class="badge badge-pulse" id="liveStateBadge">Idle</span>
+                    </div>
+
+                    <div class="progress-info-row">
+                        <span class="current-file-name" id="currentFileTitle">No active file</span>
+                        <span class="queue-overall-text" id="queueOverallText">File 0 of 0</span>
+                    </div>
+
+                    <div class="progress-bar-wrapper">
+                        <div class="progress-bar-fill" id="progressBarFill"></div>
+                        <span class="progress-percentage" id="progressPercentage">0%</span>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <span class="stat-label">File Progress</span>
+                            <span class="stat-value" id="statTransferred">0 MB / 0 MB</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Transfer Speed</span>
+                            <span class="stat-value" id="statSpeed">0.0 MB/s</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Time Remaining</span>
+                            <span class="stat-value" id="statEta">--:--</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/sender.js"></script>
+</body>
+</html>

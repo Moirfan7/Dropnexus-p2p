@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DropNexus - Receive Files</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/receiver.css">
+</head>
+<body>
+    <div class="background-globes">
+        <div class="globe globe-teal"></div>
+        <div class="globe globe-emerald"></div>
+    </div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="brand">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-cloud-arrow-down"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>DropNexus <span>Receiver</span></h1>
+                    <p>Encrypted Peer-to-Peer Download</p>
+                </div>
+            </div>
+            <div class="connection-status-pill connecting" id="statusPill">
+                <span class="status-dot"></span>
+                <span id="statusText">Connecting...</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Peer Connection & Active File Progress -->
+            <section class="card receiver-card">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-circle-nodes"></i> Peer Connection</h2>
+                    <div class="header-badges">
+                        <span class="badge badge-teal" id="queueIndicator">File 0 of 0</span>
+                        <span class="badge" id="roomBadge">ROOM: -----</span>
+                    </div>
+                </div>
+
+                <!-- File Info Preview -->
+                <div class="file-incoming-preview" id="filePreviewCard">
+                    <div class="file-icon-box" id="fileTypeIcon">
+                        <i class="fa-solid fa-file-waveform"></i>
+                    </div>
+                    <div class="file-details">
+                        <h3 id="fileName">Waiting for Sender...</h3>
+                        <p><span id="fileSize">-- MB</span> &bull; <span id="fileType">P2P Ready</span></p>
+                    </div>
+                </div>
+
+                <!-- Live Download Progress -->
+                <div class="progress-section">
+                    <div class="progress-header">
+                        <span class="progress-title">Download Progress</span>
+                        <span class="badge badge-teal" id="liveStateBadge">Idle</span>
+                    </div>
+
+                    <div class="progress-bar-wrapper">
+                        <div class="progress-bar-fill" id="progressBarFill"></div>
+                        <span class="progress-percentage" id="progressPercentage">0%</span>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <span class="stat-label">Received</span>
+                            <span class="stat-value" id="statReceived">0 MB / 0 MB</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Speed</span>
+                            <span class="stat-value" id="statSpeed">0.0 MB/s</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">ETA</span>
+                            <span class="stat-value" id="statEta">--:--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wait-message" id="waitMsg">
+                    <i class="fa-solid fa-spinner fa-spin"></i> Connecting to sender...
+                </div>
+            </section>
+
+            <!-- Received Files Manager Section (Selective & Batch Download) -->
+            <section class="card files-manager-card hidden" id="filesManagerCard">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-folder-closed"></i> Received Files</h2>
+                    <span class="badge badge-emerald" id="receivedCountBadge">0 Files Ready</span>
+                </div>
+
+                <div class="manager-toolbar">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="selectAllCheckbox" checked>
+                        <span class="checkmark"></span>
+                        <span class="label-text">Select All</span>
+                    </label>
+                    <div class="toolbar-actions">
+                        <button class="btn btn-emerald btn-sm" id="downloadSelectedBtn">
+                            <i class="fa-solid fa-list-check"></i> Download Selected
+                        </button>
+                        <button class="btn btn-cyan btn-sm" id="downloadAllBtn">
+                            <i class="fa-solid fa-download"></i> Download All
+                        </button>
+                    </div>
+                </div>
+
+                <div class="received-files-list" id="receivedFilesList">
+                    <!-- Dynamic received files list -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/receiver.js"></script>
+</body>
+</html>
