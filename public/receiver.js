@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadAllBtn = document.getElementById('downloadAllBtn');
     const receivedFilesList = document.getElementById('receivedFilesList');
 
-    // Helper: Convert any incoming raw Socket / DataChannel chunk into a valid ArrayBuffer
+    // Helper: Convert any incoming raw Socket / DataChannel / PeerJS chunk into a valid ArrayBuffer
     function ensureArrayBuffer(chunk) {
         if (!chunk) return new ArrayBuffer(0);
         if (chunk instanceof ArrayBuffer) return chunk;
@@ -50,16 +50,25 @@ document.addEventListener('DOMContentLoaded', () => {
         roomId = urlParams.get('room') || 'DEFAULT_ROOM';
     }
 
-    roomBadge.innerText = `ROOM: ${roomId.replace('NEXUS_', '').replace('ROOM_', '')}`;
+    roomId = roomId.toLowerCase();
+    roomBadge.innerText = `ROOM: ${roomId.replace('nexus_', '').replace('room_', '').toUpperCase()}`;
 
     // App State
-    let socket = io({
-        reconnection: true,
-        reconnectionAttempts: 10,
-        reconnectionDelay: 1000
-    });
+    let socket = null;
+    if (typeof io !== 'undefined') {
+        try {
+            socket = io({
+                reconnection: true,
+                reconnectionAttempts: 10,
+                reconnectionDelay: 1000
+            });
+        } catch (e) {}
+    }
+
     let peerConnection = null;
     let dataChannel = null;
+    let peer = null;
+    let peerConn = null;
     let fileMeta = null;
     let receivedChunks = [];
     let receivedBytes = 0;
@@ -70,55 +79,95 @@ document.addEventListener('DOMContentLoaded', () => {
     // Completed Received Files List State
     let receivedFiles = []; // [{ id, name, size, type, blob, url, checked }]
 
-    // Connect to Socket Room
-    socket.emit('join-room', { roomId, role: 'receiver' });
+    // Connect to Socket Room if available
+    if (socket) {
+        socket.emit('join-room', { roomId, role: 'receiver' });
+    }
     updateStatus('Connecting to Sender...', 'connecting');
 
+    // PeerJS Fallback Initialization for GitHub Pages
+    if (typeof Peer !== 'undefined') {
+        try {
+            peer = new Peer({
+                debug: 1,
+                config: {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' }
+                    ]
+                }
+            });
+
+            peer.on('open', () => {
+                console.log('[Receiver PeerJS] Connecting to Peer ID:', roomId);
+                peerConn = peer.connect(roomId, { reliable: true });
+
+                peerConn.on('open', () => {
+                    console.log('[Receiver PeerJS] Connected to Sender Peer!');
+                    updateStatus('Connected & Ready (P2P Cloud)', 'connected');
+                });
+
+                peerConn.on('data', (data) => {
+                    if (data && data.type === 'file-meta') {
+                        setupFileMetadata(data.meta);
+                    } else {
+                        handleBinaryChunk(data);
+                    }
+                });
+            });
+        } catch (e) {
+            console.log('PeerJS Receiver fallback error', e);
+        }
+    }
+
     // WebRTC Signaling Handlers
-    socket.on('signal', async (data) => {
-        if (!peerConnection) {
-            await initPeerConnection();
-        }
+    if (socket) {
+        socket.on('signal', async (data) => {
+            if (!peerConnection) {
+                await initPeerConnection();
+            }
 
-        if (data.type === 'offer') {
-            console.log('[Receiver] Received WebRTC Offer');
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal));
-            const answer = await peerConnection.createAnswer();
-            await peerConnection.setLocalDescription(answer);
-            socket.emit('signal', { roomId, type: 'answer', signal: answer });
-            updateStatus('Connected & Ready', 'connected');
-        } else if (data.type === 'candidate') {
-            console.log('[Receiver] Received ICE Candidate');
-            await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-        }
-    });
+            if (data.type === 'offer') {
+                console.log('[Receiver] Received WebRTC Offer');
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal));
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                socket.emit('signal', { roomId, type: 'answer', signal: answer });
+                updateStatus('Connected & Ready', 'connected');
+            } else if (data.type === 'candidate') {
+                console.log('[Receiver] Received ICE Candidate');
+                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+            }
+        });
 
-    socket.on('file-meta', (data) => {
-        if (data && data.meta) {
-            console.log('[Receiver] Received File Metadata:', data.meta);
-            setupFileMetadata(data.meta);
-        }
-    });
+        socket.on('file-meta', (data) => {
+            if (data && data.meta) {
+                console.log('[Receiver] Received File Metadata:', data.meta);
+                setupFileMetadata(data.meta);
+            }
+        });
 
-    socket.on('file-chunk', (data) => {
-        if (data && data.chunk) {
-            handleBinaryChunk(data.chunk);
-        }
-    });
+        socket.on('file-chunk', (data) => {
+            if (data && data.chunk) {
+                handleBinaryChunk(data.chunk);
+            }
+        });
 
-    socket.on('transfer-cancel', (data) => {
-        updateStatus(`Transfer Cancelled: ${data.reason || 'Sender stopped'}`, 'connecting');
-        liveStateBadge.innerText = 'Cancelled';
-        liveStateBadge.style.background = 'rgba(244, 63, 94, 0.2)';
-        liveStateBadge.style.color = '#fb7185';
-        waitMsg.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Transfer was cancelled by Sender.';
-    });
+        socket.on('transfer-cancel', (data) => {
+            updateStatus(`Transfer Cancelled: ${data.reason || 'Sender stopped'}`, 'connecting');
+            liveStateBadge.innerText = 'Cancelled';
+            liveStateBadge.style.background = 'rgba(244, 63, 94, 0.2)';
+            liveStateBadge.style.color = '#fb7185';
+            waitMsg.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Transfer was cancelled by Sender.';
+        });
 
-    socket.on('peer-disconnected', () => {
-        console.log('[Receiver] Sender disconnected');
-        updateStatus('Sender Offline / Link Expired', 'connecting');
-        waitMsg.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Sender is offline or stopped localhost. Share link expired.';
-    });
+        socket.on('peer-disconnected', () => {
+            console.log('[Receiver] Sender disconnected');
+            updateStatus('Sender Offline / Link Expired', 'connecting');
+            waitMsg.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Sender is offline or stopped localhost. Share link expired.';
+        });
+    }
 
     // Initialize WebRTC PeerConnection
     async function initPeerConnection() {
@@ -134,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
         peerConnection = new RTCPeerConnection(rtcConfig);
 
         peerConnection.onicecandidate = (event) => {
-            if (event.candidate) {
+            if (event.candidate && socket) {
                 socket.emit('signal', { roomId, type: 'candidate', candidate: event.candidate });
             }
         };
@@ -228,7 +277,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const now = Date.now();
 
         // Send progress ACK to sender
-        socket.emit('transfer-progress', { roomId, progress: Math.min(100, Math.round((received / total) * 100)), receivedBytes: received });
+        if (socket) {
+            socket.emit('transfer-progress', { roomId, progress: Math.min(100, Math.round((received / total) * 100)), receivedBytes: received });
+        }
+        if (peerConn) {
+            try {
+                peerConn.send({ type: 'transfer-progress', receivedBytes: received });
+            } catch (e) {}
+        }
 
         // Throttle DOM updates to once every 100ms
         if (now - lastDomUpdate < 100 && received < total) {
@@ -268,7 +324,12 @@ document.addEventListener('DOMContentLoaded', () => {
         liveStateBadge.style.color = '#34d399';
 
         // Notify sender that this file completed
-        socket.emit('receiver-completed', { roomId, fileIndex: fileMeta.fileIndex });
+        if (socket) socket.emit('receiver-completed', { roomId, fileIndex: fileMeta.fileIndex });
+        if (peerConn) {
+            try {
+                peerConn.send({ type: 'receiver-completed', fileIndex: fileMeta.fileIndex });
+            } catch (e) {}
+        }
 
         // Create Blob from received chunks
         const blob = new Blob(receivedChunks, { type: fileMeta.type || 'application/octet-stream' });

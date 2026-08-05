@@ -32,13 +32,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const tabWifiLink = document.getElementById('tabWifiLink');
 
     // App State
-    let socket = io({
-        reconnection: true,
-        reconnectionAttempts: 10,
-        reconnectionDelay: 1000
-    });
+    let socket = null;
+    if (typeof io !== 'undefined') {
+        try {
+            socket = io({
+                reconnection: true,
+                reconnectionAttempts: 10,
+                reconnectionDelay: 1000
+            });
+        } catch (e) {}
+    }
+
     let peerConnection = null;
     let dataChannel = null;
+    let peer = null;
+    let peerConn = null;
     
     // Multi-File Queue State
     let fileQueue = [];
@@ -58,19 +66,66 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastBytes = 0;
 
     // Generate Secure Cryptographic Room Token
-    let roomId = 'NEXUS_' + Math.random().toString(36).substring(2, 10);
+    let roomId = 'nexus_' + Math.random().toString(36).substring(2, 10);
 
     async function initRoomToken() {
         try {
             const res = await fetch('/api/new-room');
             const data = await res.json();
             if (data && data.roomId) {
-                roomId = data.roomId;
-                roomCodeDisplay.innerText = `ROOM: ${roomId.replace('NEXUS_', '')}`;
+                roomId = data.roomId.toLowerCase();
             }
         } catch (e) {}
-        socket.emit('join-room', { roomId, role: 'sender' });
+
+        roomCodeDisplay.innerText = `ROOM: ${roomId.replace('nexus_', '').toUpperCase()}`;
+        if (socket) socket.emit('join-room', { roomId, role: 'sender' });
+        initPeerJS();
         loadServerInfo();
+    }
+
+    function initPeerJS() {
+        if (typeof Peer !== 'undefined') {
+            try {
+                const peerId = roomId;
+                peer = new Peer(peerId, {
+                    debug: 1,
+                    config: {
+                        iceServers: [
+                            { urls: 'stun:stun.l.google.com:19302' },
+                            { urls: 'stun:stun1.l.google.com:19302' },
+                            { urls: 'stun:stun2.l.google.com:19302' }
+                        ]
+                    }
+                });
+
+                peer.on('connection', (conn) => {
+                    console.log('[Sender PeerJS] Receiver connected via PeerJS!');
+                    peerConn = conn;
+                    isReceiverConnected = true;
+                    updateStatus('Receiver Connected! Click Start Transfer', 'connected');
+                    if (fileQueue.length > 0) {
+                        sendBtn.disabled = false;
+                        sendBtn.classList.add('btn-pulse');
+                    }
+
+                    peerConn.on('data', (data) => {
+                        if (data && data.type === 'transfer-progress') {
+                            updateProgress(data.receivedBytes, selectedFile ? selectedFile.size : data.receivedBytes);
+                        } else if (data && data.type === 'receiver-completed') {
+                            updateQueueItemStatus(currentFileIndex, 'completed', 'Completed ✓');
+                            currentFileIndex++;
+                            if (currentFileIndex < fileQueue.length) {
+                                setTimeout(() => startFileInQueue(currentFileIndex), 800);
+                            } else {
+                                completeQueueTransfer();
+                            }
+                        }
+                    });
+                });
+            } catch (e) {
+                console.log('PeerJS init fallback', e);
+            }
+        }
     }
 
     async function loadServerInfo() {
@@ -93,11 +148,15 @@ document.addEventListener('DOMContentLoaded', () => {
             baseUrl = serverInfo.wifiUrl;
         }
 
-        const receiveUrl = `${baseUrl}/receive/${roomId}`;
-        shareUrlInput.value = receiveUrl;
+        let receivePath = `${baseUrl}/receive/${roomId}`;
+        // If on GitHub Pages or static host (no express route), format as receiver.html?room=
+        if (window.location.pathname.includes('.html') || window.location.hostname.includes('github.io')) {
+            const basePath = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
+            receivePath = `${basePath}/receiver.html?room=${roomId}`;
+        }
 
-        // Update QR Code
-        qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(receiveUrl)}`;
+        shareUrlInput.value = receivePath;
+        qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(receivePath)}`;
     }
 
     tabPublicLink.addEventListener('click', () => {
@@ -117,77 +176,71 @@ document.addEventListener('DOMContentLoaded', () => {
     initRoomToken();
 
     // Socket Setup
-    socket.emit('join-room', { roomId, role: 'sender' });
-
-    socket.on('receiver-joined', async () => {
-        console.log('[Sender] Receiver connected to room!');
-        if (disconnectTimer) {
-            clearTimeout(disconnectTimer);
-            disconnectTimer = null;
-        }
-        isReceiverConnected = true;
-        updateStatus('Receiver Connected! Click Start Transfer', 'connected');
-        
-        if (fileQueue.length > 0) {
-            sendBtn.disabled = false;
-            sendBtn.classList.add('btn-pulse');
-        }
-        
-        // Initialize WebRTC Offer
-        if (!peerConnection) {
-            await initPeerConnection();
-        }
-    });
-
-    socket.on('signal', async (data) => {
-        if (!peerConnection) return;
-        if (data.type === 'answer') {
-            console.log('[Sender] Received WebRTC Answer');
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal));
-        } else if (data.type === 'candidate') {
-            console.log('[Sender] Received ICE Candidate');
-            await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-        }
-    });
-
-    // Update progress based on Receiver's actual progress over network
-    socket.on('transfer-progress', (data) => {
-        if (data && data.receivedBytes !== undefined) {
-            updateProgress(data.receivedBytes, selectedFile ? selectedFile.size : data.receivedBytes);
-        }
-    });
-
-    // When Receiver completes 100% of current file, move to next file in queue
-    socket.on('receiver-completed', () => {
-        console.log(`[Sender] Receiver completed file ${currentFileIndex + 1} of ${fileQueue.length}`);
-        
-        // Mark current queue item as completed
-        updateQueueItemStatus(currentFileIndex, 'completed', 'Completed ✓');
-        
-        currentFileIndex++;
-        if (currentFileIndex < fileQueue.length) {
-            // Automatically process next file in queue!
-            setTimeout(() => {
-                startFileInQueue(currentFileIndex);
-            }, 800);
-        } else {
-            completeQueueTransfer();
-        }
-    });
-
-    socket.on('peer-disconnected', () => {
-        console.log('[Sender] Receiver disconnected, waiting for reconnection...');
-        if (disconnectTimer) clearTimeout(disconnectTimer);
-        disconnectTimer = setTimeout(() => {
-            if (!isReceiverConnected) {
-                isReceiverConnected = false;
-                updateStatus('Receiver Disconnected', 'waiting');
-                sendBtn.disabled = true;
-                sendBtn.classList.remove('btn-pulse');
-                if (isTransferring) cancelTransfer('Receiver disconnected');
+    if (socket) {
+        socket.on('receiver-joined', async () => {
+            console.log('[Sender] Receiver connected to room!');
+            if (disconnectTimer) {
+                clearTimeout(disconnectTimer);
+                disconnectTimer = null;
             }
-        }, 5000);
-    });
+            isReceiverConnected = true;
+            updateStatus('Receiver Connected! Click Start Transfer', 'connected');
+            
+            if (fileQueue.length > 0) {
+                sendBtn.disabled = false;
+                sendBtn.classList.add('btn-pulse');
+            }
+            
+            if (!peerConnection) {
+                await initPeerConnection();
+            }
+        });
+
+        socket.on('signal', async (data) => {
+            if (!peerConnection) return;
+            if (data.type === 'answer') {
+                console.log('[Sender] Received WebRTC Answer');
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal));
+            } else if (data.type === 'candidate') {
+                console.log('[Sender] Received ICE Candidate');
+                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+            }
+        });
+
+        socket.on('transfer-progress', (data) => {
+            if (data && data.receivedBytes !== undefined) {
+                updateProgress(data.receivedBytes, selectedFile ? selectedFile.size : data.receivedBytes);
+            }
+        });
+
+        socket.on('receiver-completed', () => {
+            console.log(`[Sender] Receiver completed file ${currentFileIndex + 1} of ${fileQueue.length}`);
+            updateQueueItemStatus(currentFileIndex, 'completed', 'Completed ✓');
+            
+            currentFileIndex++;
+            if (currentFileIndex < fileQueue.length) {
+                setTimeout(() => {
+                    startFileInQueue(currentFileIndex);
+                }, 800);
+            } else {
+                completeQueueTransfer();
+            }
+        });
+
+        socket.on('peer-disconnected', () => {
+            console.log('[Sender] Receiver disconnected');
+            if (disconnectTimer) clearTimeout(disconnectTimer);
+            disconnectTimer = setTimeout(() => {
+                if (!isReceiverConnected) {
+                    isReceiverConnected = false;
+                    updateStatus('Receiver Disconnected', 'waiting');
+                    sendBtn.disabled = true;
+                    sendBtn.classList.remove('btn-pulse');
+                    if (isTransferring) cancelTransfer('Receiver disconnected');
+                }
+            }, 5000);
+        });
+    }
 
     // WebRTC Peer Connection Setup
     async function initPeerConnection() {
@@ -203,12 +256,11 @@ document.addEventListener('DOMContentLoaded', () => {
         peerConnection = new RTCPeerConnection(rtcConfig);
 
         peerConnection.onicecandidate = (event) => {
-            if (event.candidate) {
+            if (event.candidate && socket) {
                 socket.emit('signal', { roomId, type: 'candidate', candidate: event.candidate });
             }
         };
 
-        // Create Data Channel
         dataChannel = peerConnection.createDataChannel('fileTransfer', { ordered: true });
         dataChannel.binaryType = 'arraybuffer';
         dataChannel.bufferedAmountLowThreshold = CHUNK_SIZE * 2;
@@ -218,14 +270,9 @@ document.addEventListener('DOMContentLoaded', () => {
             updateStatus('P2P Direct Link Active', 'connected');
         };
 
-        dataChannel.onclose = () => {
-            console.log('[Sender] RTCDataChannel Closed');
-        };
-
-        // Create Offer
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
-        socket.emit('signal', { roomId, type: 'offer', signal: offer });
+        if (socket) socket.emit('signal', { roomId, type: 'offer', signal: offer });
     }
 
     // File Drag and Drop Handlers
@@ -387,7 +434,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         updateQueueItemStatus(index, 'sending', 'Sending...');
 
-        // Send File Metadata
         const fileMeta = {
             fileIndex: index,
             totalFiles: fileQueue.length,
@@ -397,10 +443,15 @@ document.addEventListener('DOMContentLoaded', () => {
             totalChunks: Math.ceil(selectedFile.size / CHUNK_SIZE)
         };
         
-        socket.emit('file-meta', { roomId, meta: fileMeta });
+        if (socket) socket.emit('file-meta', { roomId, meta: fileMeta });
         if (dataChannel && dataChannel.readyState === 'open') {
             try {
                 dataChannel.send(JSON.stringify({ type: 'meta', data: fileMeta }));
+            } catch (e) {}
+        }
+        if (peerConn) {
+            try {
+                peerConn.send({ type: 'file-meta', meta: fileMeta });
             } catch (e) {}
         }
 
@@ -419,7 +470,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const useDataChannel = (dataChannel && dataChannel.readyState === 'open');
 
         if (offset < selectedFile.size) {
-            // Strict Memory Backpressure for DataChannel: Pause reading disk when buffer exceeds 64KB
             if (useDataChannel && dataChannel.bufferedAmount > dataChannel.bufferedAmountLowThreshold) {
                 dataChannel.onbufferedamountlow = () => {
                     dataChannel.onbufferedamountlow = null;
@@ -439,9 +489,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     try {
                         dataChannel.send(buffer);
                     } catch (e) {
-                        socket.emit('file-chunk', { roomId, chunk: buffer });
+                        if (socket) socket.emit('file-chunk', { roomId, chunk: buffer });
                     }
-                } else {
+                } else if (peerConn) {
+                    try {
+                        peerConn.send(buffer);
+                    } catch (e) {
+                        if (socket) socket.emit('file-chunk', { roomId, chunk: buffer });
+                    }
+                } else if (socket) {
                     socket.emit('file-chunk', { roomId, chunk: buffer });
                 }
 
@@ -453,7 +509,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             sendChunks();
                         }
                     } else {
-                        // Smooth pacing for socket stream (15ms delay per 64KB chunk)
                         setTimeout(sendChunks, 15);
                     }
                 } else {
@@ -470,7 +525,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateProgress(sent, total) {
         const now = Date.now();
 
-        // Throttle DOM updates to once every 100ms
         if (now - lastDomUpdate < 100 && sent < total) {
             return;
         }
@@ -482,7 +536,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         statTransferred.innerText = `${formatBytes(sent)} / ${formatBytes(total)}`;
 
-        // Calculate speed & ETA
         const timeDiff = (now - lastTime) / 1000;
         if (timeDiff >= 0.4 || percent === 100) {
             const bytesDiff = sent - lastBytes;
@@ -518,7 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
         liveStateBadge.style.background = 'rgba(244, 63, 94, 0.2)';
         liveStateBadge.style.color = '#fb7185';
         updateStatus(`Transfer Cancelled: ${reason}`, 'waiting');
-        socket.emit('transfer-cancel', { roomId, reason });
+        if (socket) socket.emit('transfer-cancel', { roomId, reason });
         resetStats();
     }
 
