@@ -57,10 +57,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let isTransferring = false;
     let isReceiverConnected = false;
     let disconnectTimer = null;
+    let ackTimeoutTimer = null;
     let serverInfo = { wifiUrl: '', publicUrl: '' };
     let currentMode = 'public'; // 'public' or 'wifi'
     
-    // Transfer Metrics - 64KB chunk size with strict backpressure pacing
+    // Transfer Metrics - 64KB chunk size
     const CHUNK_SIZE = 64 * 1024;
     let offset = 0;
     let startTime = 0;
@@ -96,7 +97,6 @@ document.addEventListener('DOMContentLoaded', () => {
         refreshLinkBtn.addEventListener('click', async () => {
             if (refreshIcon) refreshIcon.classList.add('spin-anim');
             
-            // Cancel current transfer if in progress
             if (isTransferring) {
                 cancelTransfer('New room generated');
             } else if (socket && isReceiverConnected) {
@@ -146,14 +146,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     peerConn.on('data', (data) => {
                         if (data && data.type === 'transfer-progress') {
                             updateProgress(data.receivedBytes, selectedFile ? selectedFile.size : data.receivedBytes);
-                        } else if (data && data.type === 'receiver-completed') {
-                            updateQueueItemStatus(currentFileIndex, 'completed', 'Completed ✓');
-                            currentFileIndex++;
-                            if (currentFileIndex < fileQueue.length) {
-                                setTimeout(() => startFileInQueue(currentFileIndex), 800);
-                            } else {
-                                completeQueueTransfer();
-                            }
+                        } else if (data && (data.type === 'receiver-completed' || data === 'receiver-completed')) {
+                            handleFileCompletion();
                         }
                     });
                 });
@@ -199,7 +193,6 @@ document.addEventListener('DOMContentLoaded', () => {
         shareUrlInput.value = receivePath;
         qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(receivePath)}`;
 
-        // Show tunnel password box if using loca.lt
         if (receivePath.includes('loca.lt') && serverInfo.publicIp) {
             tunnelPassBox.classList.remove('hidden');
         } else {
@@ -279,16 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         socket.on('receiver-completed', () => {
             console.log(`[Sender] Receiver completed file ${currentFileIndex + 1} of ${fileQueue.length}`);
-            updateQueueItemStatus(currentFileIndex, 'completed', 'Completed ✓');
-            
-            currentFileIndex++;
-            if (currentFileIndex < fileQueue.length) {
-                setTimeout(() => {
-                    startFileInQueue(currentFileIndex);
-                }, 800);
-            } else {
-                completeQueueTransfer();
-            }
+            handleFileCompletion();
         });
 
         socket.on('peer-disconnected', () => {
@@ -334,9 +318,40 @@ document.addEventListener('DOMContentLoaded', () => {
             updateStatus('P2P Direct Link Active', 'connected');
         };
 
+        dataChannel.onmessage = (e) => {
+            if (typeof e.data === 'string') {
+                try {
+                    const msg = JSON.parse(e.data);
+                    if (msg.type === 'receiver-completed') {
+                        handleFileCompletion();
+                    } else if (msg.type === 'transfer-progress') {
+                        updateProgress(msg.receivedBytes, selectedFile ? selectedFile.size : msg.receivedBytes);
+                    }
+                } catch (err) {}
+            }
+        };
+
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
         if (socket) socket.emit('signal', { roomId, type: 'offer', signal: offer });
+    }
+
+    function handleFileCompletion() {
+        if (ackTimeoutTimer) {
+            clearTimeout(ackTimeoutTimer);
+            ackTimeoutTimer = null;
+        }
+
+        updateQueueItemStatus(currentFileIndex, 'completed', 'Completed ✓');
+        currentFileIndex++;
+        
+        if (currentFileIndex < fileQueue.length) {
+            setTimeout(() => {
+                startFileInQueue(currentFileIndex);
+            }, 500);
+        } else {
+            completeQueueTransfer();
+        }
     }
 
     // File Drag and Drop Handlers
@@ -507,7 +522,9 @@ document.addEventListener('DOMContentLoaded', () => {
             totalChunks: Math.ceil(selectedFile.size / CHUNK_SIZE)
         };
         
-        if (socket) socket.emit('file-meta', { roomId, meta: fileMeta });
+        if (socket && socket.connected) {
+            socket.emit('file-meta', { roomId, meta: fileMeta });
+        }
         if (dataChannel && dataChannel.readyState === 'open') {
             try {
                 dataChannel.send(JSON.stringify({ type: 'meta', data: fileMeta }));
@@ -525,10 +542,14 @@ document.addEventListener('DOMContentLoaded', () => {
         lastBytes = 0;
 
         resetStats();
-        sendChunks();
-    }
 
-    let ackTimeoutTimer = null;
+        // 100ms Pacing delay: ensure receiver parses metadata before chunks stream
+        setTimeout(() => {
+            if (isTransferring) {
+                sendChunks();
+            }
+        }, 100);
+    }
 
     function sendChunks() {
         if (!isTransferring || !selectedFile) return;
@@ -541,7 +562,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     dataChannel.onbufferedamountlow = null;
                     sendChunks();
                 };
-                // Fallback timer if event is delayed by browser
                 setTimeout(() => {
                     if (isTransferring && offset < selectedFile.size) sendChunks();
                 }, 80);
@@ -585,20 +605,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 } else {
                     console.log(`[Sender] File ${currentFileIndex + 1} read complete. Waiting for receiver ACK...`);
-                    // Safety timeout if receiver completion ACK is delayed
                     if (ackTimeoutTimer) clearTimeout(ackTimeoutTimer);
                     ackTimeoutTimer = setTimeout(() => {
                         if (isTransferring && offset >= selectedFile.size) {
                             console.log('[Sender] Safety ACK timeout reached, advancing queue...');
-                            updateQueueItemStatus(currentFileIndex, 'completed', 'Completed ✓');
-                            currentFileIndex++;
-                            if (currentFileIndex < fileQueue.length) {
-                                startFileInQueue(currentFileIndex);
-                            } else {
-                                completeQueueTransfer();
-                            }
+                            handleFileCompletion();
                         }
-                    }, 3500);
+                    }, 4000);
                 }
             };
 
