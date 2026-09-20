@@ -25,6 +25,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadAllBtn = document.getElementById('downloadAllBtn');
     const receivedFilesList = document.getElementById('receivedFilesList');
 
+    // Theme Switcher Logic (Dark / Light Mode)
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const themeIcon = document.getElementById('themeIcon');
+    const savedTheme = localStorage.getItem('dropnexus-theme') || 'dark';
+
+    function applyTheme(theme) {
+        if (theme === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+            if (themeIcon) themeIcon.className = 'fa-solid fa-moon';
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+            if (themeIcon) themeIcon.className = 'fa-solid fa-sun';
+        }
+        localStorage.setItem('dropnexus-theme', theme);
+    }
+
+    applyTheme(savedTheme);
+
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            applyTheme(newTheme);
+        });
+    }
+
     // Helper: Convert any incoming raw Socket / DataChannel / PeerJS chunk into a valid ArrayBuffer
     function ensureArrayBuffer(chunk) {
         if (!chunk) return new ArrayBuffer(0);

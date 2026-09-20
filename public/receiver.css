@@ -1,31 +1,39 @@
 :root {
-    --bg-dark: #070d14;
-    --card-bg: rgba(13, 24, 37, 0.85);
-    --card-border: rgba(45, 212, 191, 0.2);
-    --emerald: #10b981;
-    --emerald-glow: rgba(16, 185, 129, 0.4);
-    --emerald-hover: #059669;
+    --bg-main: #090d16;
+    --card-bg: rgba(18, 24, 40, 0.75);
+    --card-border: rgba(255, 255, 255, 0.08);
     --teal: #14b8a6;
     --teal-glow: rgba(20, 184, 166, 0.4);
+    --emerald: #10b981;
+    --emerald-glow: rgba(16, 185, 129, 0.4);
     --cyan: #06b6d4;
-    --rose: #f43f5e;
-    --text-main: #f0fdf4;
+    --text-main: #f8fafc;
     --text-muted: #94a3b8;
-    --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font: 'Plus Jakarta Sans', sans-serif;
+}
+
+[data-theme="light"] {
+    --bg-main: #f1f5f9;
+    --card-bg: rgba(255, 255, 255, 0.88);
+    --card-border: rgba(148, 163, 184, 0.25);
+    --text-main: #0f172a;
+    --text-muted: #64748b;
 }
 
 * {
-    box-sizing: border-box;
     margin: 0;
     padding: 0;
+    box-sizing: border-box;
 }
 
 body {
     font-family: var(--font);
-    background-color: var(--bg-dark);
+    background-color: var(--bg-main);
     color: var(--text-main);
     min-height: 100vh;
     overflow-x: hidden;
+    line-height: 1.5;
+    transition: background-color 0.3s ease, color 0.3s ease;
     position: relative;
     display: flex;
     justify-content: center;
@@ -131,6 +139,39 @@ body {
 .brand-text p {
     font-size: 0.75rem;
     color: var(--text-muted);
+}
+
+.header-right-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.theme-toggle-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    color: #f59e0b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.15rem;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.theme-toggle-btn:hover {
+    transform: scale(1.08);
+    border-color: rgba(245, 158, 11, 0.5);
+}
+
+[data-theme="light"] .theme-toggle-btn {
+    color: #0d9488;
+    background: #ffffff;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
 }
 
 /* Status Pill */
