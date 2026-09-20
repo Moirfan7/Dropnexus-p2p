@@ -530,6 +530,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (index >= fileQueue.length) return;
         selectedFile = fileQueue[index];
 
+        const progressSection = document.getElementById('progressSection');
+        if (progressSection) progressSection.classList.remove('hidden');
+
         currentFileTitle.innerText = selectedFile.name;
         queueOverallText.innerText = `File ${index + 1} of ${fileQueue.length}`;
         liveStateBadge.innerText = `File ${index + 1}/${fileQueue.length}`;
