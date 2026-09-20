@@ -17,13 +17,93 @@
 }
 
 [data-theme="light"] {
-    --bg-main: #f1f5f9;
-    --card-bg: rgba(255, 255, 255, 0.88);
-    --card-border: rgba(148, 163, 184, 0.25);
+    --bg-main: #f8fafc;
+    --card-bg: #ffffff;
+    --card-border: #cbd5e1;
     --text-main: #0f172a;
-    --text-muted: #64748b;
-    --input-bg: #f8fafc;
-    --shadow-main: 0 15px 35px rgba(0, 0, 0, 0.07);
+    --text-muted: #475569;
+    --input-bg: #f1f5f9;
+    --shadow-main: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+/* Light Mode Explicit High-Contrast Text & Logo Overrides */
+[data-theme="light"] .brand-text h1 {
+    color: #0f172a !important;
+}
+[data-theme="light"] .brand-text h1 span {
+    color: #4f46e5 !important;
+}
+[data-theme="light"] .brand-text p {
+    color: #475569 !important;
+}
+[data-theme="light"] .brand-icon {
+    background: rgba(79, 70, 229, 0.12) !important;
+    color: #4f46e5 !important;
+    box-shadow: 0 4px 15px rgba(79, 70, 229, 0.15) !important;
+}
+[data-theme="light"] .card {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06) !important;
+}
+[data-theme="light"] .card h2 {
+    color: #0f172a !important;
+}
+[data-theme="light"] .card h2 i {
+    color: #4f46e5 !important;
+}
+[data-theme="light"] .drop-zone {
+    border-color: #cbd5e1 !important;
+    background: rgba(241, 245, 249, 0.7) !important;
+}
+[data-theme="light"] .drop-zone h3 {
+    color: #0f172a !important;
+}
+[data-theme="light"] .drop-zone p {
+    color: #475569 !important;
+}
+[data-theme="light"] .drop-zone-icon {
+    background: rgba(79, 70, 229, 0.1) !important;
+    color: #4f46e5 !important;
+}
+[data-theme="light"] .file-details h3,
+[data-theme="light"] #fileName {
+    color: #0f172a !important;
+}
+[data-theme="light"] .file-details p,
+[data-theme="light"] #fileSize,
+[data-theme="light"] #fileType {
+    color: #475569 !important;
+}
+[data-theme="light"] .stat-box {
+    background: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+}
+[data-theme="light"] .stat-value {
+    color: #0f172a !important;
+}
+[data-theme="light"] .stat-label {
+    color: #475569 !important;
+}
+[data-theme="light"] .queue-item {
+    background: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+}
+[data-theme="light"] .queue-item-details h5 {
+    color: #0f172a !important;
+}
+[data-theme="light"] .queue-item-details p {
+    color: #475569 !important;
+}
+[data-theme="light"] .share-url-group input,
+[data-theme="light"] .link-input-group input {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+}
+[data-theme="light"] .room-code-badge {
+    background: #e2e8f0 !important;
+    color: #334155 !important;
 }
 
 * {

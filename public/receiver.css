@@ -13,11 +13,89 @@
 }
 
 [data-theme="light"] {
-    --bg-main: #f1f5f9;
-    --card-bg: rgba(255, 255, 255, 0.88);
-    --card-border: rgba(148, 163, 184, 0.25);
+    --bg-main: #f8fafc;
+    --card-bg: #ffffff;
+    --card-border: #cbd5e1;
     --text-main: #0f172a;
-    --text-muted: #64748b;
+    --text-muted: #475569;
+}
+
+/* Light Mode Explicit High-Contrast Text & Logo Overrides */
+[data-theme="light"] .brand-text h1 {
+    color: #0f172a !important;
+}
+[data-theme="light"] .brand-text h1 span {
+    color: #0d9488 !important;
+}
+[data-theme="light"] .brand-text p {
+    color: #475569 !important;
+}
+[data-theme="light"] .brand-icon {
+    background: rgba(13, 148, 136, 0.12) !important;
+    color: #0d9488 !important;
+    box-shadow: 0 4px 15px rgba(13, 148, 136, 0.15) !important;
+}
+[data-theme="light"] .card {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06) !important;
+}
+[data-theme="light"] .card h2 {
+    color: #0f172a !important;
+}
+[data-theme="light"] .card h2 i {
+    color: #0d9488 !important;
+}
+[data-theme="light"] .file-incoming-preview {
+    background: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+}
+[data-theme="light"] .file-details h3,
+[data-theme="light"] #fileName {
+    color: #0f172a !important;
+}
+[data-theme="light"] .file-details p,
+[data-theme="light"] #fileSize,
+[data-theme="light"] #fileType {
+    color: #475569 !important;
+}
+[data-theme="light"] .file-type-icon {
+    background: rgba(13, 148, 136, 0.1) !important;
+    color: #0d9488 !important;
+}
+[data-theme="light"] .stat-box {
+    background: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+}
+[data-theme="light"] .stat-value {
+    color: #0f172a !important;
+}
+[data-theme="light"] .stat-label {
+    color: #475569 !important;
+}
+[data-theme="light"] .received-file-item {
+    background: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+}
+[data-theme="light"] .file-item-text h4 {
+    color: #0f172a !important;
+}
+[data-theme="light"] .file-item-text p {
+    color: #475569 !important;
+}
+[data-theme="light"] .file-item-icon {
+    background: rgba(13, 148, 136, 0.12) !important;
+    color: #0d9488 !important;
+}
+[data-theme="light"] .manager-toolbar {
+    background: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+}
+[data-theme="light"] .checkbox-container {
+    color: #0f172a !important;
+}
+[data-theme="light"] .wait-message {
+    color: #475569 !important;
 }
 
 * {
