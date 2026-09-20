@@ -36,8 +36,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof io !== 'undefined') {
         try {
             socket = io({
+                transports: ['polling', 'websocket'],
+                allowEIO3: true,
                 reconnection: true,
-                reconnectionAttempts: 10,
+                reconnectionAttempts: 20,
                 reconnectionDelay: 1000
             });
         } catch (e) {}
@@ -68,6 +70,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Generate Secure Cryptographic Room Token
     let roomId = 'nexus_' + Math.random().toString(36).substring(2, 10);
 
+    const refreshLinkBtn = document.getElementById('refreshLinkBtn');
+    const refreshIcon = document.getElementById('refreshIcon');
+
     async function initRoomToken() {
         try {
             const res = await fetch('/api/new-room');
@@ -75,12 +80,42 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data && data.roomId) {
                 roomId = data.roomId.toLowerCase();
             }
-        } catch (e) {}
+        } catch (e) {
+            roomId = 'nexus_' + Math.random().toString(36).substring(2, 10);
+        }
 
         roomCodeDisplay.innerText = `ROOM: ${roomId.replace('nexus_', '').toUpperCase()}`;
-        if (socket) socket.emit('join-room', { roomId, role: 'sender' });
+        if (socket && socket.connected) {
+            socket.emit('join-room', { roomId, role: 'sender' });
+        }
         initPeerJS();
         loadServerInfo();
+    }
+
+    if (refreshLinkBtn) {
+        refreshLinkBtn.addEventListener('click', async () => {
+            if (refreshIcon) refreshIcon.classList.add('spin-anim');
+            
+            // Cancel current transfer if in progress
+            if (isTransferring) {
+                cancelTransfer('New room generated');
+            } else if (socket && isReceiverConnected) {
+                socket.emit('transfer-cancel', { roomId, reason: 'Sender generated a new room link' });
+            }
+
+            isReceiverConnected = false;
+            sendBtn.disabled = true;
+            sendBtn.classList.remove('btn-pulse');
+            updateStatus('Generating new room link...', 'waiting');
+
+            await initRoomToken();
+
+            updateStatus('New Link Generated! Waiting for Receiver to open link...', 'waiting');
+
+            setTimeout(() => {
+                if (refreshIcon) refreshIcon.classList.remove('spin-anim');
+            }, 600);
+        });
     }
 
     function initPeerJS() {
@@ -128,10 +163,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    const tunnelPassBox = document.getElementById('tunnelPassBox');
+    const tunnelPassIp = document.getElementById('tunnelPassIp');
+    const copyPassBtn = document.getElementById('copyPassBtn');
+
     async function loadServerInfo() {
         try {
             const res = await fetch('/api/info');
             serverInfo = await res.json();
+            if (serverInfo && serverInfo.publicIp && serverInfo.publicIp !== 'Fetching...') {
+                tunnelPassIp.innerText = serverInfo.publicIp;
+            }
         } catch (e) {
             console.log('Failed to fetch /api/info');
         }
@@ -149,7 +191,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         let receivePath = `${baseUrl}/receive/${roomId}`;
-        // If on GitHub Pages or static host (no express route), format as receiver.html?room=
         if (window.location.pathname.includes('.html') || window.location.hostname.includes('github.io')) {
             const basePath = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
             receivePath = `${basePath}/receiver.html?room=${roomId}`;
@@ -157,6 +198,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         shareUrlInput.value = receivePath;
         qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(receivePath)}`;
+
+        // Show tunnel password box if using loca.lt
+        if (receivePath.includes('loca.lt') && serverInfo.publicIp) {
+            tunnelPassBox.classList.remove('hidden');
+        } else {
+            tunnelPassBox.classList.add('hidden');
+        }
+    }
+
+    if (copyPassBtn) {
+        copyPassBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(tunnelPassIp.innerText).then(() => {
+                copyPassBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                setTimeout(() => {
+                    copyPassBtn.innerHTML = '<i class="fa-regular fa-copy"></i>';
+                }, 2000);
+            });
+        });
     }
 
     tabPublicLink.addEventListener('click', () => {
@@ -177,6 +236,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Socket Setup
     if (socket) {
+        socket.on('connect', () => {
+            console.log('[Sender Socket Connected]:', socket.id);
+            socket.emit('join-room', { roomId, role: 'sender' });
+        });
+
         socket.on('receiver-joined', async () => {
             console.log('[Sender] Receiver connected to room!');
             if (disconnectTimer) {
@@ -464,6 +528,8 @@ document.addEventListener('DOMContentLoaded', () => {
         sendChunks();
     }
 
+    let ackTimeoutTimer = null;
+
     function sendChunks() {
         if (!isTransferring || !selectedFile) return;
 
@@ -475,6 +541,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     dataChannel.onbufferedamountlow = null;
                     sendChunks();
                 };
+                // Fallback timer if event is delayed by browser
+                setTimeout(() => {
+                    if (isTransferring && offset < selectedFile.size) sendChunks();
+                }, 80);
                 return;
             }
 
@@ -507,12 +577,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (useDataChannel) {
                         if (dataChannel.bufferedAmount <= dataChannel.bufferedAmountLowThreshold) {
                             sendChunks();
+                        } else {
+                            setTimeout(sendChunks, 20);
                         }
                     } else {
                         setTimeout(sendChunks, 15);
                     }
                 } else {
                     console.log(`[Sender] File ${currentFileIndex + 1} read complete. Waiting for receiver ACK...`);
+                    // Safety timeout if receiver completion ACK is delayed
+                    if (ackTimeoutTimer) clearTimeout(ackTimeoutTimer);
+                    ackTimeoutTimer = setTimeout(() => {
+                        if (isTransferring && offset >= selectedFile.size) {
+                            console.log('[Sender] Safety ACK timeout reached, advancing queue...');
+                            updateQueueItemStatus(currentFileIndex, 'completed', 'Completed ✓');
+                            currentFileIndex++;
+                            if (currentFileIndex < fileQueue.length) {
+                                startFileInQueue(currentFileIndex);
+                            } else {
+                                completeQueueTransfer();
+                            }
+                        }
+                    }, 3500);
                 }
             };
 

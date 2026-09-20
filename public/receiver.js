@@ -58,8 +58,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof io !== 'undefined') {
         try {
             socket = io({
+                transports: ['polling', 'websocket'],
+                allowEIO3: true,
                 reconnection: true,
-                reconnectionAttempts: 10,
+                reconnectionAttempts: 20,
                 reconnectionDelay: 1000
             });
         } catch (e) {}
@@ -71,6 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let peerConn = null;
     let fileMeta = null;
     let receivedChunks = [];
+    let earlyChunkBuffer = [];
     let receivedBytes = 0;
     let startTime = 0;
     let lastTime = 0;
@@ -123,6 +126,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // WebRTC Signaling Handlers
     if (socket) {
+        socket.on('connect', () => {
+            console.log('[Receiver Socket Connected]:', socket.id);
+            socket.emit('join-room', { roomId, role: 'receiver' });
+        });
+
         socket.on('signal', async (data) => {
             if (!peerConnection) {
                 await initPeerConnection();
@@ -214,7 +222,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleBinaryChunk(rawChunk) {
         if (!fileMeta) {
-            console.warn('[Receiver] Chunk received before file metadata!');
+            console.warn('[Receiver] Chunk arrived before metadata, buffering chunk...');
+            earlyChunkBuffer.push(rawChunk);
             return;
         }
 
@@ -259,6 +268,13 @@ document.addEventListener('DOMContentLoaded', () => {
         statReceived.innerText = `0 MB / ${formatBytes(meta.size)}`;
         waitMsg.classList.remove('hidden');
         waitMsg.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Sender is transferring File ${fileNum} of ${totalNum}...`;
+
+        // Process any early buffered chunks
+        if (earlyChunkBuffer.length > 0) {
+            const buffered = earlyChunkBuffer;
+            earlyChunkBuffer = [];
+            buffered.forEach(c => handleBinaryChunk(c));
+        }
     }
 
     function getFileIconClass(mimeType) {

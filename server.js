@@ -4,7 +4,28 @@ const { Server } = require('socket.io');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
-const localtunnel = require('localtunnel');
+const https = require('https');
+
+// Tunneling Providers
+let cloudflared = null;
+try {
+    cloudflared = require('cloudflared');
+} catch (e) {}
+
+let ngrok = null;
+try {
+    ngrok = require('@ngrok/ngrok');
+} catch (e) {}
+
+let tunnelmole = null;
+try {
+    tunnelmole = require('tunnelmole').tunnelmole;
+} catch (e) {}
+
+let localtunnel = null;
+try {
+    localtunnel = require('localtunnel');
+} catch (e) {}
 
 const app = express();
 const server = http.createServer(app);
@@ -16,6 +37,8 @@ app.use((req, res, next) => {
     res.setHeader('X-XSS-Protection', '1; mode=block');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Bypass-Tunnel-Reminder', 'true');
+    res.setHeader('ngrok-skip-browser-warning', 'true');
     next();
 });
 
@@ -23,11 +46,17 @@ const io = new Server(server, {
     maxHttpBufferSize: 1e8, // 100MB buffer limit
     pingTimeout: 60000,     // 60s heartbeat timeout
     pingInterval: 25000,    // 25s ping interval
-    cors: { origin: '*' }
+    allowEIO3: true,        // Compatibility mode for public tunnel proxies
+    transports: ['polling', 'websocket'], // Robust fallback transports
+    cors: {
+        origin: '*',
+        methods: ['GET', 'POST']
+    }
 });
 
 const PORT = process.env.PORT || 3000;
 let publicTunnelUrl = null;
+let publicIpAddress = 'Fetching...';
 
 function getLocalIpAddress() {
     const interfaces = os.networkInterfaces();
@@ -43,6 +72,21 @@ function getLocalIpAddress() {
 
 const localIp = getLocalIpAddress();
 
+// Fetch Public IP Address for fallback password displays
+function fetchPublicIp() {
+    https.get('https://api.ipify.org?format=json', (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+            try {
+                const parsed = JSON.parse(data);
+                publicIpAddress = parsed.ip || publicIpAddress;
+            } catch (e) {}
+        });
+    }).on('error', () => {});
+}
+fetchPublicIp();
+
 // Serve static files from 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -52,7 +96,8 @@ app.get('/api/info', (req, res) => {
         localIp: localIp,
         port: PORT,
         wifiUrl: `http://${localIp}:${PORT}`,
-        publicUrl: publicTunnelUrl
+        publicUrl: publicTunnelUrl,
+        publicIp: publicIpAddress
     });
 });
 
@@ -84,7 +129,6 @@ const rooms = new Map();
 
 io.on('connection', (socket) => {
     socket.on('join-room', ({ roomId, role }) => {
-        // Sanitize roomId
         if (!roomId || typeof roomId !== 'string') return;
         const cleanRoomId = roomId.replace(/[^a-zA-Z0-9_-]/g, '').substring(0, 64);
         
@@ -154,6 +198,84 @@ io.on('connection', (socket) => {
     });
 });
 
+async function startTunnel(port) {
+    // 1. Try Cloudflare Tunnel (Enterprise Grade - No Passwords / No Limits / Unblocked)
+    if (cloudflared) {
+        try {
+            console.log('⚡ Starting Cloudflare Quick Tunnel...');
+            const tunnel = await cloudflared.tunnel({ port: port });
+            const url = await tunnel.url;
+            if (url) {
+                publicTunnelUrl = url;
+                console.log(`==================================================`);
+                console.log(`🌍 PUBLIC INTERNET SHARE URL (Cloudflare - Direct Access!):`);
+                console.log(`🔗 ${url}`);
+                console.log(`==================================================\n`);
+                return;
+            }
+        } catch (e) {
+            console.log('Cloudflare tunnel skipped, trying Ngrok...');
+        }
+    }
+
+    // 2. Try Ngrok (if authToken configured or available)
+    if (ngrok && process.env.NGROK_AUTHTOKEN) {
+        try {
+            console.log('⚡ Starting Ngrok Tunnel...');
+            const listener = await ngrok.connect({ addr: port, authtoken: process.env.NGROK_AUTHTOKEN });
+            const url = listener.url();
+            if (url) {
+                publicTunnelUrl = url;
+                console.log(`==================================================`);
+                console.log(`🌍 PUBLIC INTERNET SHARE URL (Ngrok Tunnel):`);
+                console.log(`🔗 ${url}`);
+                console.log(`==================================================\n`);
+                return;
+            }
+        } catch (e) {
+            console.log('Ngrok tunnel skipped, trying Tunnelmole...');
+        }
+    }
+
+    // 3. Try Tunnelmole
+    if (tunnelmole) {
+        try {
+            console.log('⚡ Starting Tunnelmole Tunnel...');
+            const tunnelUrl = await tunnelmole({ port: port });
+            if (tunnelUrl) {
+                publicTunnelUrl = tunnelUrl;
+                console.log(`==================================================`);
+                console.log(`🌍 PUBLIC INTERNET SHARE URL (Tunnelmole):`);
+                console.log(`🔗 ${tunnelUrl}`);
+                console.log(`==================================================\n`);
+                return;
+            }
+        } catch (e) {
+            console.log('Tunnelmole skipped, trying Localtunnel...');
+        }
+    }
+
+    // 4. Try Localtunnel fallback
+    if (localtunnel) {
+        try {
+            console.log('⚡ Starting Localtunnel Fallback...');
+            const tunnel = await localtunnel({ port: port });
+            publicTunnelUrl = tunnel.url;
+            console.log(`==================================================`);
+            console.log(`🌍 PUBLIC INTERNET SHARE URL (Localtunnel):`);
+            console.log(`🔗 ${tunnel.url}`);
+            console.log(`🔑 IP Password (if prompted): ${publicIpAddress}`);
+            console.log(`==================================================\n`);
+
+            tunnel.on('close', () => {
+                publicTunnelUrl = null;
+            });
+        } catch (err) {
+            console.log('⚠️ Tunnel fallback notice: Use WiFi IP URL:', `http://${localIp}:${port}`);
+        }
+    }
+}
+
 function startServer(port) {
     server.listen(port, async () => {
         const localUrl = `http://localhost:${port}`;
@@ -165,24 +287,8 @@ function startServer(port) {
         console.log(`📱 Same WiFi / Phone: ${wifiUrl}/sender`);
         console.log(`==================================================\n`);
 
-        // Only run localtunnel when running locally in development mode
         if (process.env.NODE_ENV !== 'production' && !process.env.RENDER) {
-            try {
-                const tunnel = await localtunnel({ port: port });
-                publicTunnelUrl = tunnel.url;
-                console.log(`==================================================`);
-                console.log(`🌍 PUBLIC INTERNET SHARE URL (Send this to your friend!):`);
-                console.log(`🔗 ${tunnel.url}`);
-                console.log(`⚠️ Note: Link will work as long as this terminal is running.`);
-                console.log(`==================================================\n`);
-
-                tunnel.on('close', () => {
-                    publicTunnelUrl = null;
-                    console.log('🔒 Public internet tunnel closed.');
-                });
-            } catch (err) {
-                console.log('⚠️ Localtunnel skipped. Share URL:', wifiUrl);
-            }
+            startTunnel(port);
         } else {
             console.log(`🌍 Cloud Deployment Mode Active! Serviced via Cloud Domain.`);
         }

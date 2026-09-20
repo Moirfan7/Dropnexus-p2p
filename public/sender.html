@@ -95,10 +95,13 @@
                         <button class="tab-btn" id="tabWifiLink"><i class="fa-solid fa-wifi"></i> WiFi Link</button>
                     </div>
 
-                    <div class="link-input-group">
-                        <input type="text" id="shareUrlInput" readonly value="Generating share link...">
-                        <button class="btn btn-accent" id="copyLinkBtn">
+                    <div class="share-url-group">
+                        <input type="text" id="shareUrlInput" readonly value="Generating room link...">
+                        <button class="btn btn-emerald" id="copyLinkBtn">
                             <i class="fa-regular fa-copy"></i> <span id="copyBtnText">Copy</span>
+                        </button>
+                        <button class="btn btn-outline" id="refreshLinkBtn" title="Generate New Room Link">
+                            <i class="fa-solid fa-arrows-rotate" id="refreshIcon"></i> New Link
                         </button>
                     </div>
 
@@ -107,6 +110,11 @@
                             <i class="fa-solid fa-qrcode"></i> Show QR Code
                         </button>
                         <span class="room-code-badge" id="roomCodeDisplay">ROOM: -----</span>
+                    </div>
+
+                    <div class="tunnel-pass-info hidden" id="tunnelPassBox">
+                        <i class="fa-solid fa-key"></i> Tunnel Password (if prompted): <strong id="tunnelPassIp">---.---.---.---</strong>
+                        <button class="btn-text" id="copyPassBtn" style="color:#a5b4fc; margin-left:0.5rem;"><i class="fa-regular fa-copy"></i></button>
                     </div>
 
                     <!-- QR Code Display Box -->

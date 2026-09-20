@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AppForge Studio — In-Browser App Emulator & Bug Testing Platform</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- Top Header Navigation -->
+  <header class="top-header">
+    <div class="brand">
+      <div class="brand-icon">📱</div>
+      <div>
+        <div class="brand-title">AppForge Studio</div>
+        <div class="brand-subtitle">In-Browser Mobile Emulator & Bug Tester</div>
+      </div>
+    </div>
+
+    <div class="header-center">
+      <select id="project-select" class="input-field" style="width: 210px; font-weight: 600;">
+        <option value="">Loading Projects...</option>
+      </select>
+      <div id="current-version-pill" class="status-pill" style="font-weight: 600; color: #60a5fa;">
+        Loading...
+      </div>
+    </div>
+
+    <div class="header-right">
+      <select id="target-device-select" class="input-field" style="width: 195px; font-size: 11px; padding: 5px 8px; display: none;">
+        <option value="">Select Android Device...</option>
+      </select>
+      <div class="status-pill" id="adb-status-pill">
+        <div class="status-dot" id="adb-status-dot"></div>
+        <span id="adb-status-text">Checking ADB...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Studio Layout -->
+  <div class="studio-layout">
+
+    <!-- LEFT SIDEBAR: Projects, Uploads, Versions -->
+    <aside class="sidebar">
+      
+      <!-- Upload Section -->
+      <div class="sidebar-section">
+        <div class="section-label">
+          <span>📤 Upload App Build</span>
+        </div>
+
+        <form id="upload-form">
+          <div class="dropzone" id="dropzone">
+            <div class="dropzone-icon">📁</div>
+            <div class="dropzone-text">Click ya Drop Karein</div>
+            <div class="dropzone-sub">Supports Android (.apk) & Web/PWA (.zip)</div>
+            <input type="file" id="file-input" accept=".apk,.zip" style="display: none;">
+          </div>
+          <div id="selected-filename" style="font-size: 11px; color: #60a5fa; margin-top: 6px; display: none;"></div>
+
+          <div class="upload-inputs">
+            <input type="text" id="project-name-input" class="input-field" placeholder="App / Project Name (e.g. MySuperApp)">
+            <input type="text" id="version-input" class="input-field" placeholder="Version (e.g. v1.0.0 or v1.0.1)">
+            <button type="submit" id="btn-upload-submit" class="btn-primary">
+              🚀 Upload & Test App
+            </button>
+          </div>
+        </form>
+
+        <!-- Quick Demo Switcher -->
+        <div style="margin-top: 14px;">
+          <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">⚡ Try Demo App Workflow:</div>
+          <div class="quick-samples">
+            <div class="sample-chip" id="btn-load-sample-v1" title="Test buggy build with Checkout error">
+              🐛 <strong>v1.0.0</strong> (Buggy)
+            </div>
+            <div class="sample-chip" id="btn-load-sample-v2" title="Test fixed build where bug is resolved">
+              ✅ <strong>v1.0.1</strong> (Fixed)
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Version Retest Timeline -->
+      <div class="sidebar-section" style="flex: 1;">
+        <div class="section-label">
+          <span>🔄 Version History & Retest</span>
+        </div>
+        <div class="version-list" id="version-list-container">
+          <!-- Versions rendered here -->
+        </div>
+      </div>
+
+      <!-- App Metadata Info -->
+      <div class="sidebar-section">
+        <div class="section-label">
+          <span>ℹ️ App Details</span>
+        </div>
+        <div class="metadata-box">
+          <div class="meta-row"><span class="meta-key">App Type:</span> <span class="meta-val" id="meta-type">WEB</span></div>
+          <div class="meta-row"><span class="meta-key">Active Ver:</span> <span class="meta-val" id="meta-version">v1.0.0</span></div>
+          <div class="meta-row"><span class="meta-key">Uploaded:</span> <span class="meta-val" id="meta-uploaded">-</span></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CENTER STAGE: Mobile Device Emulator -->
+    <main class="stage-container">
+      
+      <!-- Floating Stage Controls -->
+      <div class="stage-toolbar">
+        <select id="device-select" class="input-field" style="padding: 4px 8px; font-size: 11px; width: 140px;">
+          <option value="iphone15">iPhone 15 Pro</option>
+          <option value="pixel8">Google Pixel 8</option>
+          <option value="s24">Samsung Galaxy S24</option>
+          <option value="tablet">Tablet View (10")</option>
+        </select>
+
+        <button class="tool-btn" id="tool-rotate" title="Rotate Screen (Portrait / Landscape)">
+          🔄 <span>Rotate</span>
+        </button>
+
+        <button class="tool-btn" id="tool-screenshot" title="Capture Screenshot">
+          📸 <span>Snap</span>
+        </button>
+
+        <button class="tool-btn" id="tool-live-mirror" title="Mirror Connected Android Device Live Screen">
+          📱 <span>Live Mirror</span>
+        </button>
+
+        <select id="scale-select" class="input-field" style="padding: 4px 8px; font-size: 11px; width: 85px;">
+          <option value="0.75">75%</option>
+          <option value="0.85" selected>85%</option>
+          <option value="1.0">100%</option>
+        </select>
+      </div>
+
+      <!-- Realistic Smartphone Chassis -->
+      <div class="device-wrapper" id="device-wrapper">
+        <div class="device-bezel" id="device-bezel">
+          
+          <!-- Punch Hole / Dynamic Island -->
+          <div class="device-island" id="device-island">
+            <div class="device-camera"></div>
+          </div>
+
+          <!-- Inside Screen Viewport -->
+          <div class="device-screen">
+            <!-- 1. Web/PWA App Iframe Sandbox -->
+            <iframe id="emulator-iframe" src="/sample/v1/index.html" sandbox="allow-scripts allow-same-origin allow-forms allow-modals"></iframe>
+
+            <!-- 2. ADB Streaming Canvas -->
+            <canvas id="adb-canvas"></canvas>
+
+            <!-- 3. APK Deep Inspector & Runner Screen -->
+            <div id="apk-inspector" class="apk-inspector-view">
+              <div class="apk-badge-hero">
+                <div class="apk-icon-circle">🤖</div>
+                <h3 id="apk-name-display" style="font-size: 18px; margin-bottom: 4px;">Android Application</h3>
+                <div id="apk-pkg-display" style="font-size: 12px; color: #94a3b8; font-family: monospace;">com.example.app</div>
+                <div style="margin-top: 6px;">
+                  <span id="apk-ver-display" class="badge-pill badge-apk">v1.0.0</span>
+                </div>
+              </div>
+
+              <div class="apk-actions-grid">
+                <button class="btn-apk-action" id="btn-adb-run">
+                  <span style="font-size: 20px;">▶️</span>
+                  <div>
+                    <div style="color: #34d399;">Install & Run via Local ADB</div>
+                    <div style="font-size: 11px; color: #94a3b8; font-weight: normal;">Connected phone ya local emulator par run karein</div>
+                  </div>
+                </button>
+              </div>
+
+              <div style="font-size: 12px; font-weight: 700; margin-top: 14px; margin-bottom: 6px; color: #cbd5e1;">Declared Permissions:</div>
+              <div id="apk-perms-list" style="display: flex; flex-wrap: wrap; gap: 4px;">
+                <!-- Permissions badges -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Hardware Soft Navigation Bar -->
+          <div class="device-navbar">
+            <button class="nav-btn" id="nav-back" title="Back">◀</button>
+            <button class="nav-btn" id="nav-home" title="Home">⚪</button>
+            <button class="nav-btn" id="nav-refresh" title="Reload App">🔄</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- RIGHT PANEL: Live Console & Kami (Bug) Tracker -->
+    <aside class="debugger-panel">
+      
+      <!-- Panel Tabs Header -->
+      <div class="panel-tabs">
+        <button class="panel-tab active" data-tab="tab-console">
+          📟 Live Console
+        </button>
+        <button class="panel-tab" data-tab="tab-bugs">
+          🐛 Kami / Bug Tracker <span id="bug-count-badge" class="badge-pill badge-bug" style="margin-left: 4px;">1 Open</span>
+        </button>
+      </div>
+
+      <!-- TAB 1: Console Logs -->
+      <div class="tab-content active" id="tab-console">
+        <div class="console-toolbar">
+          <div class="filter-pills">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="error">Errors</button>
+            <button class="filter-btn" data-filter="warn">Warnings</button>
+            <button class="filter-btn" data-filter="log">Logs</button>
+          </div>
+          <button class="btn-secondary" id="btn-clear-logs" style="padding: 3px 8px; font-size: 11px;">Clear</button>
+        </div>
+
+        <div class="console-output" id="console-output">
+          <!-- Logs appear here dynamically -->
+        </div>
+      </div>
+
+      <!-- TAB 2: "Kami" / Bug Tracker -->
+      <div class="tab-content" id="tab-bugs">
+        <div class="bug-tracker-view">
+          
+          <div id="bug-quick-alert" style="display: none; background: rgba(239,68,68,0.2); border: 1px solid #ef4444; border-radius: 8px; padding: 8px 12px; font-size: 11.5px; color: #fca5a5;">
+            <!-- Auto error notification -->
+          </div>
+
+          <div class="bug-action-banner">
+            <div style="font-size: 12px; color: #cbd5e1;">
+              Agar app me koi kami aaye, use darj karein. Phir solve karke naya version upload karke test karein!
+            </div>
+            <button class="btn-capture-bug" id="btn-new-bug">
+              ➕ Record Bug / Kami Darj Karein
+            </button>
+          </div>
+
+          <div class="section-label" style="margin-top: 4px;">
+            <span>📋 Tracked Issues</span>
+          </div>
+
+          <div class="bugs-list" id="bugs-list-container">
+            <!-- Bug cards rendered here -->
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Record Bug Modal -->
+  <div class="modal-backdrop" id="bug-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">📝 Record Bug / Kami Darj Karein (<span id="modal-version-tag">v1.0.0</span>)</div>
+        <button class="modal-close" id="modal-close-btn">&times;</button>
+      </div>
+
+      <form id="bug-form">
+        <div style="margin-bottom: 12px;">
+          <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Bug Title</label>
+          <input type="text" id="bug-title-input" class="input-field" placeholder="e.g. Checkout button click par null-pointer error" required>
+        </div>
+
+        <div style="margin-bottom: 12px;">
+          <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Description / Kami Details</label>
+          <textarea id="bug-desc-input" class="input-field" rows="3" placeholder="Kya issue aaya? Kaise solve karna hai?"></textarea>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Error Stack Trace (Auto-captured or manual)</label>
+          <textarea id="bug-stack-input" class="input-field" rows="3" style="font-family: monospace; font-size: 11px; color: #f87171;" placeholder="Stack trace..."></textarea>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button type="button" class="btn-secondary" onclick="window.BugTracker.closeModal()">Cancel</button>
+          <button type="submit" class="btn-primary">💾 Save Kami / Issue</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/js/emulator.js"></script>
+  <script src="/js/bugtracker.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

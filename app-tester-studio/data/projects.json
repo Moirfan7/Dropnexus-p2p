@@ -1,0 +1,91 @@
+{
+  "projects": [
+    {
+      "id": "proj_earningshub",
+      "name": "EarningsHub",
+      "type": "apk",
+      "createdAt": "2026-09-03T09:16:01.830Z",
+      "versions": [
+        {
+          "version": "v1.0.0",
+          "uploadedAt": "2026-09-03T09:56:02.551Z",
+          "apkPath": "/apks/proj_earningshub/v1.0.0/1788429362206_app-debug.apk",
+          "fullDiskPath": "C:\\Users\\mi567\\OneDrive\\Desktop\\p2p-file-share\\app-tester-studio\\uploads\\apks\\proj_earningshub\\v1.0.0\\1788429362206_app-debug.apk",
+          "apkInfo": {
+            "appName": "MechType",
+            "packageName": "com.mechtype.app",
+            "versionName": "1.0",
+            "versionCode": "1",
+            "permissions": [
+              "VIBRATE",
+              "INTERNET",
+              "ACCESS_NETWORK_STATE",
+              "ACCESS_WIFI_STATE",
+              "CHANGE_WIFI_MULTICAST_STATE",
+              "BLUETOOTH",
+              "BLUETOOTH_ADMIN",
+              "BLUETOOTH_CONNECT",
+              "BLUETOOTH_SCAN",
+              "BLUETOOTH_ADVERTISE",
+              "com.mechtype.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+            ],
+            "launchableActivity": "com.mechtype.app.ui.MainActivity"
+          },
+          "notes": "Uploaded APK build (19.84 MB)"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "proj_testuploadapp",
+      "name": "TestUploadApp",
+      "type": "web",
+      "createdAt": "2026-09-03T09:13:10.034Z",
+      "versions": [
+        {
+          "version": "v1.0.0",
+          "uploadedAt": "2026-09-03T09:13:10.034Z",
+          "entryPath": "/sandboxes/proj_testuploadapp/v1.0.0/index.html",
+          "notes": "Uploaded Web Zip build (2.4 KB)"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "proj_swiftbite",
+      "name": "SwiftBite Food Delivery",
+      "type": "web",
+      "createdAt": "2026-09-03T09:12:48.957Z",
+      "versions": [
+        {
+          "version": "v1.0.0",
+          "uploadedAt": "2026-09-03T08:12:48.958Z",
+          "entryPath": "/sample/v1/index.html",
+          "notes": "Initial buggy build with payment gateway null-pointer error.",
+          "bugsCount": 1
+        },
+        {
+          "version": "v1.0.1",
+          "uploadedAt": "2026-09-03T09:12:48.958Z",
+          "entryPath": "/sample/v2/index.html",
+          "notes": "Patched payment session token generation. Tested and ready.",
+          "bugsCount": 0
+        }
+      ],
+      "bugs": [
+        {
+          "id": "bug_demo_01",
+          "projectId": "proj_swiftbite",
+          "version": "v1.0.0",
+          "title": "Checkout Error: paymentGatewaySession.getToken() is null",
+          "description": "Proceed to checkout button click karne par screen freeze ho jati hai aur console me TypeError aata hai.",
+          "level": "error",
+          "status": "resolved",
+          "resolvedInVersion": "v1.0.1",
+          "createdAt": "2026-09-03T08:14:28.958Z",
+          "stackTrace": "TypeError: Cannot read properties of null (reading 'getToken')\n    at triggerCheckout (index.html:112:35)\n    at HTMLButtonElement.onclick (index.html:79:65)"
+        }
+      ]
+    }
+  ]
+}
