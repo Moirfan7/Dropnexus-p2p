@@ -148,9 +148,16 @@ io.on('connection', (socket) => {
 
         if (role === 'sender') {
             room.sender = socket.id;
+            if (room.receiver) {
+                socket.emit('receiver-joined', { socketId: room.receiver });
+                io.to(cleanRoomId).emit('sender-joined', { socketId: socket.id });
+            }
         } else if (role === 'receiver') {
             room.receiver = socket.id;
             io.to(cleanRoomId).emit('receiver-joined', { socketId: socket.id });
+            if (room.sender) {
+                socket.emit('sender-joined', { socketId: room.sender });
+            }
         }
 
         console.log(`[Socket] ${role} (${socket.id}) joined room: ${cleanRoomId}`);

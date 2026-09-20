@@ -12,5 +12,8 @@
     "localtunnel": "^2.0.2",
     "socket.io": "^4.6.1",
     "tunnelmole": "^2.4.0"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.3"
   }
 }

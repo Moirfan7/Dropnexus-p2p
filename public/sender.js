@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const statTransferred = document.getElementById('statTransferred');
     const statSpeed = document.getElementById('statSpeed');
     const statEta = document.getElementById('statEta');
+    const progressSection = document.getElementById('progressSection');
 
     const tabPublicLink = document.getElementById('tabPublicLink');
     const tabWifiLink = document.getElementById('tabWifiLink');
@@ -68,11 +69,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 reconnectionAttempts: 20,
                 reconnectionDelay: 1000
             });
-        } catch (e) {}
+        } catch (e) {
+            console.error('Socket init error:', e);
+        }
     }
 
     let peerConnection = null;
     let dataChannel = null;
+    let pendingCandidates = [];
     let peer = null;
     let peerConn = null;
     
@@ -83,7 +87,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let isTransferring = false;
     let isReceiverConnected = false;
     let disconnectTimer = null;
-    let ackTimeoutTimer = null;
     let serverInfo = { wifiUrl: '', publicUrl: '' };
     let currentMode = 'public'; // 'public' or 'wifi'
     
@@ -112,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         roomCodeDisplay.innerText = `ROOM: ${roomId.replace('nexus_', '').toUpperCase()}`;
-        if (socket && socket.connected) {
+        if (socket) {
             socket.emit('join-room', { roomId, role: 'sender' });
         }
         initPeerJS();
@@ -172,16 +175,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     peerConn.on('data', (data) => {
                         if (data && data.type === 'transfer-progress') {
                             updateProgress(data.receivedBytes, selectedFile ? selectedFile.size : data.receivedBytes);
-                            if (selectedFile && data.receivedBytes >= selectedFile.size) {
-                                handleFileCompletion();
-                            }
                         } else if (data && (data.type === 'receiver-completed' || data === 'receiver-completed')) {
                             handleFileCompletion();
                         }
                     });
                 });
             } catch (e) {
-                console.log('PeerJS init fallback', e);
+                console.log('PeerJS init notice (optional fallback)');
             }
         }
     }
@@ -270,7 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 disconnectTimer = null;
             }
             isReceiverConnected = true;
-            updateStatus('Receiver Connected! Click Start Transfer', 'connected');
+            updateStatus('Receiver Connected! Click Start Queue Transfer', 'connected');
             
             if (fileQueue.length > 0) {
                 sendBtn.disabled = false;
@@ -287,23 +287,31 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.type === 'answer') {
                 console.log('[Sender] Received WebRTC Answer');
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal));
+                for (const cand of pendingCandidates) {
+                    try {
+                        await peerConnection.addIceCandidate(new RTCIceCandidate(cand));
+                    } catch (e) {}
+                }
+                pendingCandidates = [];
             } else if (data.type === 'candidate') {
-                console.log('[Sender] Received ICE Candidate');
-                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                if (peerConnection.remoteDescription) {
+                    try {
+                        await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                    } catch (e) {}
+                } else {
+                    pendingCandidates.push(data.candidate);
+                }
             }
         });
 
         socket.on('transfer-progress', (data) => {
             if (data && data.receivedBytes !== undefined) {
                 updateProgress(data.receivedBytes, selectedFile ? selectedFile.size : data.receivedBytes);
-                if (selectedFile && data.receivedBytes >= selectedFile.size) {
-                    handleFileCompletion();
-                }
             }
         });
 
         socket.on('receiver-completed', () => {
-            console.log(`[Sender] Receiver completed file ${currentFileIndex + 1} of ${fileQueue.length}`);
+            console.log(`[Sender] Receiver confirmed completion for file ${currentFileIndex + 1} of ${fileQueue.length}`);
             handleFileCompletion();
         });
 
@@ -328,8 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
                 { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun2.l.google.com:19302' },
-                { urls: 'stun:stun3.l.google.com:19302' }
+                { urls: 'stun:stun2.l.google.com:19302' }
             ]
         };
 
@@ -358,9 +365,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         handleFileCompletion();
                     } else if (msg.type === 'transfer-progress') {
                         updateProgress(msg.receivedBytes, selectedFile ? selectedFile.size : msg.receivedBytes);
-                        if (selectedFile && msg.receivedBytes >= selectedFile.size) {
-                            handleFileCompletion();
-                        }
                     }
                 } catch (err) {}
             }
@@ -376,11 +380,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleFileCompletion() {
         if (completionHandled) return;
         completionHandled = true;
-
-        if (ackTimeoutTimer) {
-            clearTimeout(ackTimeoutTimer);
-            ackTimeoutTimer = null;
-        }
 
         updateQueueItemStatus(currentFileIndex, 'completed', 'Completed ✓');
         currentFileIndex++;
@@ -428,6 +427,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         dropZonePrompt.classList.add('hidden');
         fileQueueContainer.classList.remove('hidden');
+
+        const totalQueueBytes = fileQueue.reduce((acc, f) => acc + f.size, 0);
+        statTransferred.innerText = `0 Bytes / ${formatBytes(totalQueueBytes)}`;
+        statSpeed.innerText = '0.0 MB/s';
+        statEta.innerText = '--:--';
+        currentFileTitle.innerText = `${fileQueue.length} ${fileQueue.length === 1 ? 'File' : 'Files'} Selected`;
+        queueOverallText.innerText = `Ready (${formatBytes(totalQueueBytes)})`;
 
         if (isReceiverConnected) {
             sendBtn.disabled = false;
@@ -547,7 +553,6 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedFile = fileQueue[index];
         completionHandled = false;
 
-        const progressSection = document.getElementById('progressSection');
         if (progressSection) progressSection.classList.remove('hidden');
 
         currentFileTitle.innerText = selectedFile.name;
@@ -568,7 +573,8 @@ document.addEventListener('DOMContentLoaded', () => {
             totalChunks: Math.ceil(selectedFile.size / CHUNK_SIZE)
         };
         
-        if (socket && socket.connected) {
+        // Broadcast metadata over all active channels
+        if (socket) {
             socket.emit('file-meta', { roomId, meta: fileMeta });
         }
         if (dataChannel && dataChannel.readyState === 'open') {
@@ -576,7 +582,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 dataChannel.send(JSON.stringify({ type: 'meta', data: fileMeta }));
             } catch (e) {}
         }
-        if (peerConn) {
+        if (peerConn && peerConn.open) {
             try {
                 peerConn.send({ type: 'file-meta', meta: fileMeta });
             } catch (e) {}
@@ -589,12 +595,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         resetStats();
 
-        // 100ms Pacing delay: ensure receiver parses metadata before chunks stream
+        // 120ms Pacing delay: guarantees receiver receives & sets up metadata buffers before chunks arrive
         setTimeout(() => {
             if (isTransferring) {
                 sendChunks();
             }
-        }, 100);
+        }, 120);
     }
 
     function sendChunks() {
@@ -621,23 +627,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!isTransferring) return;
                 const buffer = event.target.result;
 
+                let sentViaP2P = false;
                 if (useDataChannel) {
                     try {
                         dataChannel.send(buffer);
+                        sentViaP2P = true;
                     } catch (e) {
-                        if (socket) socket.emit('file-chunk', { roomId, chunk: buffer });
+                        sentViaP2P = false;
                     }
-                } else if (peerConn) {
+                } else if (peerConn && peerConn.open) {
                     try {
                         peerConn.send(buffer);
+                        sentViaP2P = true;
                     } catch (e) {
-                        if (socket) socket.emit('file-chunk', { roomId, chunk: buffer });
+                        sentViaP2P = false;
                     }
-                } else if (socket) {
+                }
+
+                // If P2P channel failed or is not open, guarantee delivery via Socket!
+                if (!sentViaP2P && socket) {
                     socket.emit('file-chunk', { roomId, chunk: buffer });
                 }
 
                 offset += buffer.byteLength;
+                updateProgress(offset, selectedFile.size);
 
                 if (offset < selectedFile.size) {
                     if (useDataChannel) {
@@ -650,14 +663,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         setTimeout(sendChunks, 15);
                     }
                 } else {
-                    console.log(`[Sender] File ${currentFileIndex + 1} read complete (${offset} / ${selectedFile.size} bytes). Waiting for receiver ACK...`);
-                    if (ackTimeoutTimer) clearTimeout(ackTimeoutTimer);
-                    ackTimeoutTimer = setTimeout(() => {
-                        if (isTransferring && offset >= selectedFile.size && !completionHandled) {
-                            console.log('[Sender] Safety ACK timeout reached, advancing queue...');
-                            handleFileCompletion();
-                        }
-                    }, 6000);
+                    console.log(`[Sender] All chunks streamed (${offset} bytes). Waiting for receiver confirmation...`);
+                    updateStatus('All bytes sent! Waiting for receiver download confirmation...', 'transferring');
+                    liveStateBadge.innerText = 'Confirming...';
                 }
             };
 
@@ -723,9 +731,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetStats() {
         progressBarFill.style.width = '0%';
         progressPercentage.innerText = '0%';
-        statTransferred.innerText = '0 MB / 0 MB';
+        statTransferred.innerText = '0 Bytes / 0 Bytes';
         statSpeed.innerText = '0.0 MB/s';
         statEta.innerText = '--:--';
+        currentFileTitle.innerText = fileQueue.length > 0 ? `${fileQueue.length} Files Selected` : 'Ready to Send';
         liveStateBadge.innerText = 'Idle';
         liveStateBadge.style.background = '';
         liveStateBadge.style.color = '';
