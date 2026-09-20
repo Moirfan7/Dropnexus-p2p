@@ -127,10 +127,15 @@ app.get('/receive/:roomId', (req, res) => {
 // Socket.io Secure Signaling System (Zero File Storage)
 const rooms = new Map();
 
+function cleanRoom(roomId) {
+    if (!roomId || typeof roomId !== 'string') return '';
+    return roomId.replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase().substring(0, 64);
+}
+
 io.on('connection', (socket) => {
     socket.on('join-room', ({ roomId, role }) => {
-        if (!roomId || typeof roomId !== 'string') return;
-        const cleanRoomId = roomId.replace(/[^a-zA-Z0-9_-]/g, '').substring(0, 64);
+        const cleanRoomId = cleanRoom(roomId);
+        if (!cleanRoomId) return;
         
         socket.join(cleanRoomId);
         socket.roomId = cleanRoomId;
@@ -153,32 +158,40 @@ io.on('connection', (socket) => {
 
     socket.on('signal', (data) => {
         if (!data || !data.roomId) return;
-        socket.to(data.roomId).emit('signal', data);
+        const cleanRoomId = cleanRoom(data.roomId);
+        socket.to(cleanRoomId).emit('signal', data);
     });
 
     socket.on('file-meta', (data) => {
         if (!data || !data.roomId) return;
-        socket.to(data.roomId).emit('file-meta', data);
+        const cleanRoomId = cleanRoom(data.roomId);
+        console.log(`[Socket] Broadcasting file-meta to room: ${cleanRoomId}`);
+        socket.to(cleanRoomId).emit('file-meta', data);
     });
 
     socket.on('file-chunk', (data) => {
         if (!data || !data.roomId) return;
-        socket.to(data.roomId).emit('file-chunk', data);
+        const cleanRoomId = cleanRoom(data.roomId);
+        socket.to(cleanRoomId).emit('file-chunk', data);
     });
 
     socket.on('transfer-progress', (data) => {
         if (!data || !data.roomId) return;
-        socket.to(data.roomId).emit('transfer-progress', data);
+        const cleanRoomId = cleanRoom(data.roomId);
+        socket.to(cleanRoomId).emit('transfer-progress', data);
     });
 
     socket.on('receiver-completed', (data) => {
         if (!data || !data.roomId) return;
-        socket.to(data.roomId).emit('receiver-completed', data);
+        const cleanRoomId = cleanRoom(data.roomId);
+        console.log(`[Socket] Receiver completed signal received for room: ${cleanRoomId}`);
+        socket.to(cleanRoomId).emit('receiver-completed', data);
     });
 
     socket.on('transfer-cancel', (data) => {
         if (!data || !data.roomId) return;
-        socket.to(data.roomId).emit('transfer-cancel', data);
+        const cleanRoomId = cleanRoom(data.roomId);
+        socket.to(cleanRoomId).emit('transfer-cancel', data);
     });
 
     socket.on('disconnect', () => {
@@ -199,7 +212,6 @@ io.on('connection', (socket) => {
 });
 
 async function startTunnel(port) {
-    // 1. Try Cloudflare Tunnel (Enterprise Grade - No Passwords / No Limits / Unblocked)
     if (cloudflared) {
         try {
             console.log('⚡ Starting Cloudflare Quick Tunnel...');
@@ -218,7 +230,6 @@ async function startTunnel(port) {
         }
     }
 
-    // 2. Try Ngrok (if authToken configured or available)
     if (ngrok && process.env.NGROK_AUTHTOKEN) {
         try {
             console.log('⚡ Starting Ngrok Tunnel...');
@@ -237,7 +248,6 @@ async function startTunnel(port) {
         }
     }
 
-    // 3. Try Tunnelmole
     if (tunnelmole) {
         try {
             console.log('⚡ Starting Tunnelmole Tunnel...');
@@ -255,7 +265,6 @@ async function startTunnel(port) {
         }
     }
 
-    // 4. Try Localtunnel fallback
     if (localtunnel) {
         try {
             console.log('⚡ Starting Localtunnel Fallback...');

@@ -172,6 +172,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     peerConn.on('data', (data) => {
                         if (data && data.type === 'transfer-progress') {
                             updateProgress(data.receivedBytes, selectedFile ? selectedFile.size : data.receivedBytes);
+                            if (selectedFile && data.receivedBytes >= selectedFile.size) {
+                                handleFileCompletion();
+                            }
                         } else if (data && (data.type === 'receiver-completed' || data === 'receiver-completed')) {
                             handleFileCompletion();
                         }
@@ -293,6 +296,9 @@ document.addEventListener('DOMContentLoaded', () => {
         socket.on('transfer-progress', (data) => {
             if (data && data.receivedBytes !== undefined) {
                 updateProgress(data.receivedBytes, selectedFile ? selectedFile.size : data.receivedBytes);
+                if (selectedFile && data.receivedBytes >= selectedFile.size) {
+                    handleFileCompletion();
+                }
             }
         });
 
@@ -352,6 +358,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         handleFileCompletion();
                     } else if (msg.type === 'transfer-progress') {
                         updateProgress(msg.receivedBytes, selectedFile ? selectedFile.size : msg.receivedBytes);
+                        if (selectedFile && msg.receivedBytes >= selectedFile.size) {
+                            handleFileCompletion();
+                        }
                     }
                 } catch (err) {}
             }
@@ -362,7 +371,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (socket) socket.emit('signal', { roomId, type: 'offer', signal: offer });
     }
 
+    let completionHandled = false;
+
     function handleFileCompletion() {
+        if (completionHandled) return;
+        completionHandled = true;
+
         if (ackTimeoutTimer) {
             clearTimeout(ackTimeoutTimer);
             ackTimeoutTimer = null;
@@ -373,6 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (currentFileIndex < fileQueue.length) {
             setTimeout(() => {
+                completionHandled = false;
                 startFileInQueue(currentFileIndex);
             }, 500);
         } else {
@@ -515,6 +530,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         currentFileIndex = 0;
+        completionHandled = false;
         isTransferring = true;
         sendBtn.classList.add('hidden');
         cancelBtn.classList.remove('hidden');
@@ -529,6 +545,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function startFileInQueue(index) {
         if (index >= fileQueue.length) return;
         selectedFile = fileQueue[index];
+        completionHandled = false;
 
         const progressSection = document.getElementById('progressSection');
         if (progressSection) progressSection.classList.remove('hidden');
@@ -633,14 +650,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         setTimeout(sendChunks, 15);
                     }
                 } else {
-                    console.log(`[Sender] File ${currentFileIndex + 1} read complete. Waiting for receiver ACK...`);
+                    console.log(`[Sender] File ${currentFileIndex + 1} read complete (${offset} / ${selectedFile.size} bytes). Waiting for receiver ACK...`);
                     if (ackTimeoutTimer) clearTimeout(ackTimeoutTimer);
                     ackTimeoutTimer = setTimeout(() => {
-                        if (isTransferring && offset >= selectedFile.size) {
+                        if (isTransferring && offset >= selectedFile.size && !completionHandled) {
                             console.log('[Sender] Safety ACK timeout reached, advancing queue...');
                             handleFileCompletion();
                         }
-                    }, 4000);
+                    }, 6000);
                 }
             };
 
