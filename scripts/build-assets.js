@@ -10,7 +10,7 @@ if (!fs.existsSync(assetsDir)) {
     fs.mkdirSync(assetsDir, { recursive: true });
 }
 
-console.log('[DropNexus] Generating high-resolution Windows ICO and PNG icons...');
+console.log('[DropNexus] Generating high-resolution Windows ICO, PNG and Mobile PWA icons...');
 
 const psScript = `
 Add-Type -AssemblyName System.Drawing
@@ -20,8 +20,10 @@ $publicDir = "${publicDir.replace(/\\/g, '\\\\')}"
 $icoPath = Join-Path $assetsDir "dropnexus.ico"
 $pngPath = Join-Path $assetsDir "dropnexus.png"
 $faviconPath = Join-Path $publicDir "favicon.ico"
+$icon192Path = Join-Path $publicDir "icon-192.png"
+$icon512Path = Join-Path $publicDir "icon-512.png"
 
-$sizes = @(256, 128, 64, 48, 32, 16)
+$sizes = @(512, 256, 192, 128, 64, 48, 32, 16)
 $pngStreams = @()
 
 foreach ($sz in $sizes) {
@@ -101,20 +103,29 @@ foreach ($sz in $sizes) {
     $spinePen = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(255, 56, 189, 248), [Math]::Max([float](2.2 * $scale), [float]1.0))
     $g.DrawLine($spinePen, $pTip, $pNotch)
 
+    if ($sz -eq 512) {
+        $bmp.Save($icon512Path, [System.Drawing.Imaging.ImageFormat]::Png)
+    }
     if ($sz -eq 256) {
         $bmp.Save($pngPath, [System.Drawing.Imaging.ImageFormat]::Png)
     }
+    if ($sz -eq 192) {
+        $bmp.Save($icon192Path, [System.Drawing.Imaging.ImageFormat]::Png)
+    }
 
-    $ms = New-Object System.IO.MemoryStream
-    $bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
-    $pngStreams += @{
-        Size = $sz
-        Data = $ms.ToArray()
+    # Only include sizes <= 256 in ICO directory
+    if ($sz -le 256 -and $sz -ne 192) {
+        $ms = New-Object System.IO.MemoryStream
+        $bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
+        $pngStreams += @{
+            Size = $sz
+            Data = $ms.ToArray()
+        }
+        $ms.Dispose()
     }
 
     $g.Dispose()
     $bmp.Dispose()
-    $ms.Dispose()
 }
 
 $fs = New-Object System.IO.FileStream($icoPath, [System.IO.FileMode]::Create)
@@ -147,7 +158,7 @@ $bw.Close()
 $fs.Close()
 
 Copy-Item $icoPath $faviconPath -Force
-Write-Host "SUCCESS: Generated DropNexus ICO, PNG and favicon cleanly!"
+Write-Host "SUCCESS: Generated ICO, PNG, Mobile PWA Icons and Favicon cleanly!"
 `;
 
 try {
