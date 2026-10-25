@@ -51,7 +51,22 @@
 
 ---
 
-## 🚀 Quick Start
+## ⚡ 1-Click Desktop App (Zero-Install Setup)
+
+DropNexus now comes with a **native Windows 1-Click Desktop Launcher & Auto-Installer**:
+- **Zero Configuration Required**: Anyone downloading this project doesn't even need to install Node.js manually! The installer auto-detects or downloads portable Node.js runtime automatically.
+- **Pure Silent Launch**: No ugly black command prompt or terminal window opens! It launches smoothly in the background and directly opens the dedicated app window.
+- **Custom Desktop Icon**: Creates a branded **DropNexus** desktop shortcut on your Windows Desktop.
+
+### 📥 How to Run:
+1. Double-click **`Setup-DropNexus.bat`** (one-time automatic setup).
+2. A **DropNexus** icon will appear on your Desktop.
+3. Click the desktop icon anytime to start transferring files instantly!
+4. To stop the background server anytime, double-click **`Stop-DropNexus.bat`**.
+
+---
+
+## 🚀 Manual Quick Start
 
 ### 1. Prerequisites
 Ensure you have [Node.js](https://nodejs.org/) (v16 or higher) installed on your system.

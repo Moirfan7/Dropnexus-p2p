@@ -1,0 +1,2293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Super Mini Golf Endless ⛳ | Unlimited Golf Game</title>
+    <style>
+        :root {
+            --primary: #10b981;
+            --primary-dark: #059669;
+            --secondary: #3b82f6;
+            --accent: #f59e0b;
+            --danger: #ef4444;
+            --bg-dark: #0f172a;
+            --surface: rgba(15, 23, 42, 0.85);
+            --border: rgba(255, 255, 255, 0.15);
+            --text-light: #f8fafc;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #064e3b;
+            font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            color: var(--text-light);
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at center, #065f46 0%, #022c22 100%);
+        }
+
+        canvas#gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: grab;
+        }
+
+        canvas#gameCanvas:active {
+            cursor: grabbing;
+        }
+
+        /* Top HUD Bar */
+        .hud-top {
+            position: absolute;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--surface);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            padding: 8px 18px;
+            border-radius: 999px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+            max-width: 95vw;
+        }
+
+        .hud-pill {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2px 10px;
+        }
+
+        .hud-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #94a3b8;
+            font-weight: 700;
+        }
+
+        .hud-value {
+            font-size: 18px;
+            font-weight: 800;
+            color: #ffffff;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .hud-divider {
+            width: 1px;
+            height: 26px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Action Buttons */
+        .btn-icon {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border);
+            color: white;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 16px;
+        }
+
+        .btn-icon:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.08);
+        }
+
+        /* Floating Dynamic Speedometer HUD (Bottom) */
+        .hud-bottom {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            background: var(--surface);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            padding: 10px 24px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            z-index: 10;
+            pointer-events: none;
+            transition: opacity 0.25s, transform 0.25s;
+            min-width: 280px;
+        }
+
+        .speed-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        .speed-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #94a3b8;
+            font-weight: 700;
+        }
+
+        /* Speed Badge: LOW / MED / HIGH / MAX */
+        .speed-badge {
+            font-size: 13px;
+            font-weight: 900;
+            padding: 3px 12px;
+            border-radius: 999px;
+            letter-spacing: 1px;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            text-transform: uppercase;
+        }
+
+        .speed-badge.ready {
+            background: rgba(255, 255, 255, 0.15);
+            color: #cbd5e1;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .speed-badge.low {
+            background: #10b981;
+            color: #022c22;
+            border: 1px solid #34d399;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.7);
+        }
+
+        .speed-badge.med {
+            background: #f59e0b;
+            color: #451a03;
+            border: 1px solid #fbbf24;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.7);
+        }
+
+        .speed-badge.high {
+            background: #ef4444;
+            color: #ffffff;
+            border: 1px solid #f87171;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.9);
+            animation: pulse-high 0.3s infinite alternate;
+        }
+
+        .speed-badge.max {
+            background: linear-gradient(135deg, #ec4899, #ef4444, #eab308);
+            color: #ffffff;
+            border: 1px solid #ffffff;
+            box-shadow: 0 0 25px rgba(236, 72, 153, 1);
+            animation: pulse-max 0.2s infinite alternate;
+        }
+
+        @keyframes pulse-high {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.08); }
+        }
+
+        @keyframes pulse-max {
+            0% { transform: scale(1.04); }
+            100% { transform: scale(1.15); }
+        }
+
+        /* Meter Bar */
+        .speed-meter-container {
+            width: 100%;
+            height: 14px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .speed-meter-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #10b981 0%, #f59e0b 50%, #ef4444 85%, #ec4899 100%);
+            border-radius: 8px;
+            transition: width 0.05s linear;
+        }
+
+        .speed-meter-markers {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 33%;
+            pointer-events: none;
+        }
+
+        .speed-marker {
+            width: 2px;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .speed-footer {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            font-size: 11px;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+
+        /* Instructions Hint */
+        .drag-hint {
+            position: absolute;
+            bottom: 85px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #e2e8f0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            white-space: nowrap;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Modal Dialogs */
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-box {
+            background: linear-gradient(145deg, #1e293b, #0f172a);
+            border: 2px solid var(--border);
+            border-radius: 24px;
+            padding: 32px 36px;
+            max-width: 420px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 40px rgba(16, 185, 129, 0.3);
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .modal-overlay.active .modal-box {
+            transform: scale(1);
+        }
+
+        .modal-title {
+            font-size: 28px;
+            font-weight: 900;
+            color: #ffffff;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .modal-subtitle {
+            font-size: 15px;
+            color: #94a3b8;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .score-card {
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 24px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .score-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .score-item-label {
+            font-size: 11px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .score-item-val {
+            font-size: 22px;
+            font-weight: 900;
+            color: #ffffff;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: 800;
+            border-radius: 999px;
+            cursor: pointer;
+            width: 100%;
+            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.4);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 25px rgba(16, 185, 129, 0.6);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #cbd5e1;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 700;
+            border-radius: 999px;
+            cursor: pointer;
+            margin-top: 10px;
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Help Modal Info List */
+        .help-list {
+            text-align: left;
+            margin-bottom: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            font-size: 14px;
+            color: #cbd5e1;
+        }
+
+        .help-item {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .help-icon {
+            font-size: 20px;
+            min-width: 28px;
+        }
+
+        /* Toast notification */
+        .toast {
+            position: absolute;
+            top: 75px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid var(--border);
+            color: #ffffff;
+            padding: 8px 20px;
+            border-radius: 999px;
+            font-size: 14px;
+            font-weight: 700;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s;
+            z-index: 50;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <!-- Main Interactive Canvas -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Top HUD: Hole, Strokes, Par, Score, Audio & Controls -->
+    <div class="hud-top">
+        <div class="hud-pill">
+            <span class="hud-label">Hole</span>
+            <span class="hud-value" id="hud-hole">1</span>
+        </div>
+        <div class="hud-divider"></div>
+        <div class="hud-pill">
+            <span class="hud-label">Stroke</span>
+            <span class="hud-value" id="hud-stroke">1</span>
+        </div>
+        <div class="hud-divider"></div>
+        <div class="hud-pill">
+            <span class="hud-label">Par</span>
+            <span class="hud-value" id="hud-par">3</span>
+        </div>
+        <div class="hud-divider"></div>
+        <div class="hud-pill">
+            <span class="hud-label">Score</span>
+            <span class="hud-value" id="hud-score">E</span>
+        </div>
+        <div class="hud-divider"></div>
+        <button class="btn-icon" id="btn-sound" title="Toggle Sound">🔊</button>
+        <button class="btn-icon" id="btn-reset-hole" title="Reset Current Hole">🔄</button>
+        <button class="btn-icon" id="btn-help" title="Instructions">❓</button>
+    </div>
+
+    <!-- Drag Hint -->
+    <div class="drag-hint" id="drag-hint">
+        🎯 Drag golf stick backwards to charge power & release to kick ball!
+    </div>
+
+    <!-- Bottom Speedometer & Power Tracker -->
+    <div class="hud-bottom" id="hud-bottom">
+        <div class="speed-header">
+            <span class="speed-title">⚡ Stick Power Tracker</span>
+            <span class="speed-badge ready" id="speed-badge">READY</span>
+        </div>
+        <div class="speed-meter-container">
+            <div class="speed-meter-fill" id="speed-meter-fill"></div>
+            <div class="speed-meter-markers">
+                <div class="speed-marker"></div>
+                <div class="speed-marker"></div>
+            </div>
+        </div>
+        <div class="speed-footer">
+            <span>🟢 LOW</span>
+            <span>🟡 MED</span>
+            <span>🔴 HIGH</span>
+            <span id="speed-percent">0%</span>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Victory Modal (Level Complete) -->
+    <div class="modal-overlay" id="victory-modal">
+        <div class="modal-box">
+            <div style="font-size: 52px; margin-bottom: 8px;" id="victory-emoji">🏆</div>
+            <h2 class="modal-title" id="victory-title">HOLE IN ONE!</h2>
+            <p class="modal-subtitle" id="victory-subtitle">Sublime putt right into the cup!</p>
+
+            <div class="score-card">
+                <div class="score-item">
+                    <span class="score-item-label">Strokes Taken</span>
+                    <span class="score-item-val" id="victory-strokes">1</span>
+                </div>
+                <div class="score-item">
+                    <span class="score-item-label">Hole Par</span>
+                    <span class="score-item-val" id="victory-par">3</span>
+                </div>
+                <div class="score-item">
+                    <span class="score-item-label">Current Hole</span>
+                    <span class="score-item-val" id="victory-hole">1</span>
+                </div>
+                <div class="score-item">
+                    <span class="score-item-label">Total Score</span>
+                    <span class="score-item-val" id="victory-total">E</span>
+                </div>
+            </div>
+
+            <button class="btn-primary" id="btn-next-level">
+                Next Endless Hole ⛳ ➔
+            </button>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div class="modal-overlay" id="help-modal">
+        <div class="modal-box">
+            <h2 class="modal-title">⛳ How to Play</h2>
+            <p class="modal-subtitle">Super Mini Golf Endless Edition</p>
+            
+            <div class="help-list">
+                <div class="help-item">
+                    <span class="help-icon">🏌️</span>
+                    <div>
+                        <strong>Stick Drag & Aim:</strong> Click/Touch the ball or screen and drag backwards. The golf stick pulls back and aims automatically.
+                    </div>
+                </div>
+                <div class="help-item">
+                    <span class="help-icon">⚡</span>
+                    <div>
+                        <strong>Speed Tracker (Power Meter):</strong>
+                        <br>• Drag thoda sa: <span style="color:#34d399; font-weight:bold;">🟢 LOW</span> symbol.
+                        <br>• Drag medium: <span style="color:#fbbf24; font-weight:bold;">🟡 MED</span> symbol.
+                        <br>• Drag zyada: <span style="color:#f87171; font-weight:bold;">🔴 HIGH / MAX</span> symbol with sparks!
+                    </div>
+                </div>
+                <div class="help-item">
+                    <span class="help-icon">💥</span>
+                    <div>
+                        <strong>Release to Kick:</strong> Jaise hi mouse ya finger release karenge, stick aage aakar ball ko kick karegi!
+                    </div>
+                </div>
+                <div class="help-item">
+                    <span class="help-icon">🎯</span>
+                    <div>
+                        <strong>Multi-Putt System:</strong> Agar ball hole me nahi gayi, to ball jahan rukegi, stick wahi wapas aa jayegi. Wahi se dobara drag karke hole me daalein!
+                    </div>
+                </div>
+                <div class="help-item">
+                    <span class="help-icon">♾️</span>
+                    <div>
+                        <strong>Endless Levels:</strong> Har level naye obstacles, sand traps, bouncers aur corridors ke saath infinite endless generate hote hain!
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-primary" id="btn-close-help">Let's Putt! 🏌️‍♂️</button>
+        </div>
+    </div>
+</div>
+
+<script>
+/**
+ * SUPER MINI GOLF ENDLESS - AUDIO SYNTHESIZER (Web Audio API)
+ * Fully self-contained procedural sound effects.
+ */
+class SoundEngine {
+    constructor() {
+        this.ctx = null;
+        this.enabled = true;
+    }
+
+    init() {
+        if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) {
+                this.ctx = new AudioCtx();
+            }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    }
+
+    playSwing(powerRatio) {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        // Club contact thwack frequency based on power
+        const baseFreq = 180 + powerRatio * 220;
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(baseFreq, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.12);
+
+        gain.gain.setValueAtTime(0.35 + powerRatio * 0.45, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+        // Add a noise click for realistic club strike
+        const bufferSize = this.ctx.sampleRate * 0.04;
+        const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            output[i] = Math.random() * 2 - 1;
+        }
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = noiseBuffer;
+        const noiseFilter = this.ctx.createBiquadFilter();
+        noiseFilter.type = 'bandpass';
+        noiseFilter.frequency.value = 1200 + powerRatio * 800;
+        const noiseGain = this.ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.25 + powerRatio * 0.35, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+
+        noise.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(this.ctx.destination);
+        noise.start(now);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.15);
+    }
+
+    playBounce() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(260, now);
+        osc.frequency.exponentialRampToValueAtTime(120, now + 0.07);
+
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.08);
+    }
+
+    playBumper() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(520, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.1);
+
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.2);
+    }
+
+    playHoleDrop() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        // Cup clank sound
+        const osc1 = this.ctx.createOscillator();
+        const osc2 = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(440, now);
+        osc1.frequency.exponentialRampToValueAtTime(220, now + 0.25);
+
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(880, now);
+        osc2.frequency.exponentialRampToValueAtTime(330, now + 0.25);
+
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + 0.35);
+        osc2.stop(now + 0.35);
+    }
+
+    playFanfare() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        notes.forEach((freq, idx) => {
+            const start = this.ctx.currentTime + idx * 0.11;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, start);
+
+            gain.gain.setValueAtTime(0.25, start);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.45);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(start);
+            osc.stop(start + 0.5);
+        });
+    }
+
+    playWater() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.linearRampToValueAtTime(100, now + 0.3);
+
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.35);
+    }
+}
+
+/**
+ * PSEUDO-RANDOM NUMBER GENERATOR (Deterministic per level seed)
+ */
+class PRNG {
+    constructor(seed = 1) {
+        this.seed = seed;
+    }
+    next() {
+        this.seed = (this.seed * 9301 + 49297) % 233280;
+        return this.seed / 233280;
+    }
+    range(min, max) {
+        return min + this.next() * (max - min);
+    }
+}
+
+/**
+ * 2D VECTOR MATH UTILITIES
+ */
+const Vec = {
+    dist: (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1),
+    distSq: (x1, y1, x2, y2) => (x2 - x1)**2 + (y2 - y1)**2,
+    angle: (x1, y1, x2, y2) => Math.atan2(y2 - y1, x2 - x1),
+    lerp: (a, b, t) => a + (b - a) * t,
+    clamp: (val, min, max) => Math.max(min, Math.min(max, val))
+};
+
+/**
+ * MAIN GOLF GAME CLASS
+ */
+class GolfGame {
+    constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.sound = new SoundEngine();
+
+        // Level & Score State
+        this.level = 1;
+        this.strokes = 1;
+        this.totalStrokes = 0;
+        this.totalPar = 0;
+        this.par = 3;
+        this.isGameOver = false;
+
+        // Ball State
+        this.ball = {
+            x: 0,
+            y: 0,
+            vx: 0,
+            vy: 0,
+            radius: 8.5,
+            isMoving: false,
+            inHole: false,
+            scale: 1.0,
+            trail: []
+        };
+        this.lastShotOrigin = { x: 0, y: 0 };
+
+        // Hole (Cup) State
+        this.hole = {
+            x: 0,
+            y: 0,
+            radius: 14,
+            flagWave: 0
+        };
+
+        // Course Geometry & Obstacles
+        this.bounds = { x: 0, y: 0, width: 0, height: 0 };
+        this.fairwayPolygons = []; // Multi-corridors
+        this.walls = [];           // [{x1, y1, x2, y2, normal}]
+        this.sandTraps = [];       // [{x, y, radiusX, radiusY, rot}]
+        this.waterHazards = [];    // [{x, y, w, h}]
+        this.bumpers = [];         // [{x, y, radius, bounceScale: 1.0}]
+        this.spinners = [];        // [{x, y, length, angle, speed}]
+
+        // Golf Stick & Drag Interaction State
+        this.isDragging = false;
+        this.dragStart = { x: 0, y: 0 };
+        this.dragCurrent = { x: 0, y: 0 };
+        this.dragPower = 0; // 0.0 to 1.0
+        this.dragAngle = 0; // Direction to kick the ball
+        this.maxDragDistance = 180; // px
+        
+        // Club Animation State
+        this.stickAnim = {
+            swinging: false,
+            progress: 0, // 0 (pulled back) to 1 (contact)
+            strikeAlpha: 1.0
+        };
+
+        // Visual Particles & Confetti
+        this.particles = [];
+        this.confetti = [];
+
+        // Camera / Viewport
+        this.camera = { x: 0, y: 0, scale: 1.0 };
+
+        // Bind DOM elements
+        this.initDom();
+        this.initEvents();
+        this.resize();
+
+        // Load Level 1
+        this.loadLevel(this.level);
+
+        // Start Animation Loop
+        this.lastTime = performance.now();
+        requestAnimationFrame(this.loop.bind(this));
+    }
+
+    initDom() {
+        this.hudHole = document.getElementById('hud-hole');
+        this.hudStroke = document.getElementById('hud-stroke');
+        this.hudPar = document.getElementById('hud-par');
+        this.hudScore = document.getElementById('hud-score');
+        this.speedBadge = document.getElementById('speed-badge');
+        this.speedMeterFill = document.getElementById('speed-meter-fill');
+        this.speedPercent = document.getElementById('speed-percent');
+        this.dragHint = document.getElementById('drag-hint');
+        this.toastEl = document.getElementById('toast');
+        this.victoryModal = document.getElementById('victory-modal');
+        this.helpModal = document.getElementById('help-modal');
+
+        document.getElementById('btn-sound').addEventListener('click', (e) => {
+            this.sound.enabled = !this.sound.enabled;
+            e.currentTarget.textContent = this.sound.enabled ? '🔊' : '🔇';
+            this.showToast(this.sound.enabled ? 'Sound Enabled 🔊' : 'Sound Muted 🔇');
+        });
+
+        document.getElementById('btn-reset-hole').addEventListener('click', () => {
+            this.ball.x = this.lastShotOrigin.x;
+            this.ball.y = this.lastShotOrigin.y;
+            this.ball.vx = 0;
+            this.ball.vy = 0;
+            this.ball.isMoving = false;
+            this.showToast('Ball Reset to Tee 🔄');
+        });
+
+        document.getElementById('btn-help').addEventListener('click', () => {
+            this.helpModal.classList.add('active');
+        });
+
+        document.getElementById('btn-close-help').addEventListener('click', () => {
+            this.helpModal.classList.remove('active');
+        });
+
+        document.getElementById('btn-next-level').addEventListener('click', () => {
+            this.victoryModal.classList.remove('active');
+            this.level++;
+            this.loadLevel(this.level);
+        });
+    }
+
+    initEvents() {
+        window.addEventListener('resize', () => this.resize());
+
+        const getPos = (e) => {
+            const rect = this.canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: (clientX - rect.left) * (this.canvas.width / rect.width),
+                y: (clientY - rect.top) * (this.canvas.height / rect.height)
+            };
+        };
+
+        const onPointerDown = (e) => {
+            if (this.ball.isMoving || this.ball.inHole) return;
+            this.sound.init();
+
+            const pos = getPos(e);
+            this.isDragging = true;
+            this.dragStart = { x: pos.x, y: pos.y };
+            this.dragCurrent = { x: pos.x, y: pos.y };
+            this.updateDrag(pos);
+            this.dragHint.style.opacity = '0';
+        };
+
+        const onPointerMove = (e) => {
+            if (!this.isDragging) return;
+            const pos = getPos(e);
+            this.dragCurrent = { x: pos.x, y: pos.y };
+            this.updateDrag(pos);
+        };
+
+        const onPointerUp = () => {
+            if (!this.isDragging) return;
+            this.isDragging = false;
+
+            if (this.dragPower > 0.05) {
+                this.executeShot();
+            } else {
+                this.resetStick();
+            }
+        };
+
+        this.canvas.addEventListener('mousedown', onPointerDown);
+        window.addEventListener('mousemove', onPointerMove);
+        window.addEventListener('mouseup', onPointerUp);
+
+        this.canvas.addEventListener('touchstart', onPointerDown, { passive: false });
+        window.addEventListener('touchmove', onPointerMove, { passive: false });
+        window.addEventListener('touchend', onPointerUp, { passive: false });
+    }
+
+    resize() {
+        const dpr = window.devicePixelRatio || 1;
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+        this.canvas.width = this.width * dpr;
+        this.canvas.height = this.height * dpr;
+        this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        if (this.level) {
+            this.updateCourseDimensions();
+        }
+    }
+
+    showToast(msg) {
+        this.toastEl.textContent = msg;
+        this.toastEl.classList.add('show');
+        clearTimeout(this._toastTimer);
+        this._toastTimer = setTimeout(() => {
+            this.toastEl.classList.remove('show');
+        }, 2200);
+    }
+
+    updateDrag(pos) {
+        const dx = pos.x - this.dragStart.x;
+        const dy = pos.y - this.dragStart.y;
+        const dist = Math.hypot(dx, dy);
+
+        // Clamped power ratio
+        this.dragPower = Vec.clamp(dist / this.maxDragDistance, 0, 1.0);
+
+        // Drag backwards to shoot forward: angle is opposite of drag vector
+        this.dragAngle = Math.atan2(-dy, -dx);
+
+        // Update Bottom Speedometer HUD
+        this.updateSpeedometerHUD(this.dragPower);
+    }
+
+    updateSpeedometerHUD(power) {
+        const pct = Math.round(power * 100);
+        this.speedMeterFill.style.width = `${pct}%`;
+        this.speedPercent.textContent = `${pct}%`;
+
+        // Update Speed Badges: LOW / MED / HIGH / MAX
+        this.speedBadge.className = 'speed-badge';
+        if (power <= 0.02) {
+            this.speedBadge.textContent = 'READY';
+            this.speedBadge.classList.add('ready');
+        } else if (power < 0.35) {
+            this.speedBadge.textContent = '🟢 LOW POWER';
+            this.speedBadge.classList.add('low');
+        } else if (power < 0.75) {
+            this.speedBadge.textContent = '🟡 MED POWER';
+            this.speedBadge.classList.add('med');
+        } else if (power < 0.95) {
+            this.speedBadge.textContent = '🔴 HIGH POWER!';
+            this.speedBadge.classList.add('high');
+        } else {
+            this.speedBadge.textContent = '💥 MAX POWER!';
+            this.speedBadge.classList.add('max');
+        }
+    }
+
+    resetStick() {
+        this.dragPower = 0;
+        this.updateSpeedometerHUD(0);
+    }
+
+    /**
+     * EXECUTE SHOT:
+     * Golf stick swings forward and kicks the ball!
+     */
+    executeShot() {
+        const shotPower = this.dragPower;
+        const shotAngle = this.dragAngle;
+
+        // Remember origin for reset
+        this.lastShotOrigin = { x: this.ball.x, y: this.ball.y };
+
+        // Stick swing forward animation
+        this.stickAnim.swinging = true;
+        this.stickAnim.progress = 0;
+
+        // Calculate ball speed: Max speed ~26 px/frame
+        const minSpeed = 3.5;
+        const maxSpeed = 26.0;
+        const speed = minSpeed + (maxSpeed - minSpeed) * Math.pow(shotPower, 1.25);
+
+        // Play contact sound
+        this.sound.playSwing(shotPower);
+
+        // Launch ball
+        this.ball.vx = Math.cos(shotAngle) * speed;
+        this.ball.vy = Math.sin(shotAngle) * speed;
+        this.ball.isMoving = true;
+
+        // Impact spark particles
+        const contactX = this.ball.x - Math.cos(shotAngle) * this.ball.radius;
+        const contactY = this.ball.y - Math.sin(shotAngle) * this.ball.radius;
+        this.createSparks(contactX, contactY, shotAngle, shotPower);
+
+        this.resetStick();
+    }
+
+    createSparks(x, y, angle, power) {
+        const count = 10 + Math.floor(power * 25);
+        for (let i = 0; i < count; i++) {
+            const spread = angle + (Math.random() - 0.5) * 1.5;
+            const spd = 2 + Math.random() * 8 * power;
+            this.particles.push({
+                x, y,
+                vx: Math.cos(spread) * spd,
+                vy: Math.sin(spread) * spd,
+                color: power > 0.7 ? '#f87171' : (power > 0.35 ? '#fbbf24' : '#34d399'),
+                radius: 2 + Math.random() * 3,
+                life: 1.0,
+                decay: 0.03 + Math.random() * 0.04
+            });
+        }
+    }
+
+    createWaterSplash(x, y) {
+        for (let i = 0; i < 24; i++) {
+            const ang = Math.random() * Math.PI * 2;
+            const spd = 1 + Math.random() * 5;
+            this.particles.push({
+                x, y,
+                vx: Math.cos(ang) * spd,
+                vy: Math.sin(ang) * spd,
+                color: '#60a5fa',
+                radius: 2.5 + Math.random() * 3,
+                life: 1.0,
+                decay: 0.025
+            });
+        }
+    }
+
+    createConfetti() {
+        const colors = ['#f43f5e', '#ec4899', '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b'];
+        for (let i = 0; i < 100; i++) {
+            this.confetti.push({
+                x: this.hole.x,
+                y: this.hole.y,
+                vx: (Math.random() - 0.5) * 16,
+                vy: -6 - Math.random() * 12,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                size: 6 + Math.random() * 6,
+                rotation: Math.random() * Math.PI * 2,
+                rotSpeed: (Math.random() - 0.5) * 0.2,
+                life: 1.0,
+                decay: 0.008 + Math.random() * 0.008
+            });
+        }
+    }
+
+    /**
+     * PROCEDURAL ENDLESS LEVEL GENERATOR
+     */
+    loadLevel(levelNum) {
+        this.level = levelNum;
+        this.strokes = 1;
+        this.ball.inHole = false;
+        this.ball.scale = 1.0;
+        this.ball.vx = 0;
+        this.ball.vy = 0;
+        this.ball.isMoving = false;
+        this.ball.trail = [];
+        this.particles = [];
+        this.confetti = [];
+
+        this.updateCourseDimensions();
+        this.generateCourse(levelNum);
+
+        // Update HUD display
+        this.hudHole.textContent = this.level;
+        this.hudStroke.textContent = this.strokes;
+        this.hudPar.textContent = this.par;
+        this.updateScoreDisplay();
+
+        this.showToast(`⛳ Hole ${this.level} - Par ${this.par}`);
+        this.dragHint.style.opacity = '1';
+    }
+
+    updateCourseDimensions() {
+        const pad = Math.min(this.width, this.height) * 0.08;
+        this.bounds = {
+            x: pad,
+            y: pad + 40,
+            width: this.width - pad * 2,
+            height: this.height - pad * 2 - 80
+        };
+    }
+
+    generateCourse(level) {
+        const rng = new PRNG(level * 431 + 71);
+        const { x, y, width, height } = this.bounds;
+
+        this.fairwayPolygons = [];
+        this.walls = [];
+        this.sandTraps = [];
+        this.waterHazards = [];
+        this.bumpers = [];
+        this.spinners = [];
+
+        // Course layouts depending on endless level progression
+        const layoutType = (level - 1) % 6;
+
+        if (layoutType === 0) {
+            // Level 1 / Straight putting green
+            this.par = 2;
+            const fwWidth = Math.min(width * 0.55, 340);
+            const fwHeight = height * 0.85;
+            const fwX = x + (width - fwWidth) / 2;
+            const fwY = y + (height - fwHeight) / 2;
+
+            this.fairwayPolygons.push([
+                { x: fwX, y: fwY },
+                { x: fwX + fwWidth, y: fwY },
+                { x: fwX + fwWidth, y: fwY + fwHeight },
+                { x: fwX, y: fwY + fwHeight }
+            ]);
+
+            // Tee at bottom, Hole at top
+            this.ball.x = fwX + fwWidth / 2;
+            this.ball.y = fwY + fwHeight - 60;
+            this.hole.x = fwX + fwWidth / 2;
+            this.hole.y = fwY + 70;
+
+            // Small sand trap in middle-right if not level 1
+            if (level > 1) {
+                this.sandTraps.push({
+                    x: fwX + fwWidth * 0.65,
+                    y: fwY + fwHeight * 0.45,
+                    radiusX: 45,
+                    radiusY: 30
+                });
+            }
+        } 
+        else if (layoutType === 1) {
+            // L-Shape / Dogleg corner
+            this.par = 3;
+            const corr = Math.min(width, height) * 0.32;
+            const fwX = x + width * 0.15;
+            const fwY = y + height * 0.1;
+            const w1 = width * 0.7;
+            const h1 = height * 0.8;
+
+            this.fairwayPolygons.push([
+                { x: fwX, y: fwY },
+                { x: fwX + w1, y: fwY },
+                { x: fwX + w1, y: fwY + corr },
+                { x: fwX + corr, y: fwY + corr },
+                { x: fwX + corr, y: fwY + h1 },
+                { x: fwX, y: fwY + h1 }
+            ]);
+
+            this.ball.x = fwX + corr / 2;
+            this.ball.y = fwY + h1 - 60;
+            this.hole.x = fwX + w1 - 60;
+            this.hole.y = fwY + corr / 2;
+
+            // Bouncy bumper at the corner for cool bank shots!
+            this.bumpers.push({
+                x: fwX + corr + 30,
+                y: fwY + corr + 30,
+                radius: 20,
+                bounceScale: 1.0
+            });
+        }
+        else if (layoutType === 2) {
+            // Sand Trap Corridor with obstacles
+            this.par = 3;
+            const fwWidth = Math.min(width * 0.65, 400);
+            const fwHeight = height * 0.88;
+            const fwX = x + (width - fwWidth) / 2;
+            const fwY = y + (height - fwHeight) / 2;
+
+            this.fairwayPolygons.push([
+                { x: fwX, y: fwY },
+                { x: fwX + fwWidth, y: fwY },
+                { x: fwX + fwWidth, y: fwY + fwHeight },
+                { x: fwX, y: fwY + fwHeight }
+            ]);
+
+            this.ball.x = fwX + fwWidth / 2;
+            this.ball.y = fwY + fwHeight - 60;
+            this.hole.x = fwX + fwWidth / 2;
+            this.hole.y = fwY + 65;
+
+            // Dual sand traps
+            this.sandTraps.push({
+                x: fwX + fwWidth * 0.3,
+                y: fwY + fwHeight * 0.4,
+                radiusX: 55,
+                radiusY: 40
+            });
+            this.sandTraps.push({
+                x: fwX + fwWidth * 0.7,
+                y: fwY + fwHeight * 0.6,
+                radiusX: 50,
+                radiusY: 35
+            });
+
+            // Center bumper
+            this.bumpers.push({
+                x: fwX + fwWidth / 2,
+                y: fwY + fwHeight * 0.5,
+                radius: 22,
+                bounceScale: 1.0
+            });
+        }
+        else if (layoutType === 3) {
+            // Pinball Alley / Multiple Bouncers
+            this.par = 4;
+            const fwWidth = Math.min(width * 0.75, 450);
+            const fwHeight = height * 0.88;
+            const fwX = x + (width - fwWidth) / 2;
+            const fwY = y + (height - fwHeight) / 2;
+
+            this.fairwayPolygons.push([
+                { x: fwX, y: fwY },
+                { x: fwX + fwWidth, y: fwY },
+                { x: fwX + fwWidth, y: fwY + fwHeight },
+                { x: fwX, y: fwY + fwHeight }
+            ]);
+
+            this.ball.x = fwX + fwWidth / 2;
+            this.ball.y = fwY + fwHeight - 55;
+            this.hole.x = fwX + fwWidth / 2;
+            this.hole.y = fwY + 65;
+
+            // Pinball triangle bumpers
+            const cy = fwY + fwHeight * 0.45;
+            this.bumpers.push({ x: fwX + fwWidth * 0.32, y: cy - 40, radius: 24, bounceScale: 1.0 });
+            this.bumpers.push({ x: fwX + fwWidth * 0.68, y: cy - 40, radius: 24, bounceScale: 1.0 });
+            this.bumpers.push({ x: fwX + fwWidth * 0.5, y: cy + 45, radius: 26, bounceScale: 1.0 });
+        }
+        else if (layoutType === 4) {
+            // Water Hazard Island & Narrow Bridge
+            this.par = 4;
+            const fwWidth = Math.min(width * 0.7, 440);
+            const fwHeight = height * 0.88;
+            const fwX = x + (width - fwWidth) / 2;
+            const fwY = y + (height - fwHeight) / 2;
+
+            this.fairwayPolygons.push([
+                { x: fwX, y: fwY },
+                { x: fwX + fwWidth, y: fwY },
+                { x: fwX + fwWidth, y: fwY + fwHeight },
+                { x: fwX, y: fwY + fwHeight }
+            ]);
+
+            this.ball.x = fwX + fwWidth / 2;
+            this.ball.y = fwY + fwHeight - 60;
+            this.hole.x = fwX + fwWidth / 2;
+            this.hole.y = fwY + 70;
+
+            // Water hazard in the middle with a bridge in between
+            const waterW = fwWidth * 0.38;
+            const waterH = 90;
+            const waterY = fwY + fwHeight * 0.45;
+
+            this.waterHazards.push({ x: fwX + 15, y: waterY, w: waterW, h: waterH });
+            this.waterHazards.push({ x: fwX + fwWidth - waterW - 15, y: waterY, w: waterW, h: waterH });
+
+            // Rotating spinner obstacle at higher levels!
+            if (level >= 5) {
+                this.spinners.push({
+                    x: fwX + fwWidth / 2,
+                    y: waterY + waterH / 2,
+                    length: 65,
+                    angle: 0,
+                    speed: 0.025
+                });
+            }
+        }
+        else {
+            // Z-Shape / Zigzag Dual Dogleg
+            this.par = 4;
+            const corr = Math.min(width, height) * 0.28;
+            const fwX = x + width * 0.12;
+            const fwY = y + height * 0.08;
+            const w1 = width * 0.76;
+            const h1 = height * 0.84;
+            const midY = fwY + h1 * 0.5;
+
+            this.fairwayPolygons.push([
+                { x: fwX, y: fwY },
+                { x: fwX + w1, y: fwY },
+                { x: fwX + w1, y: midY },
+                { x: fwX + corr, y: midY },
+                { x: fwX + corr, y: fwY + h1 },
+                { x: fwX, y: fwY + h1 },
+                { x: fwX, y: midY - corr },
+                { x: fwX + w1 - corr, y: midY - corr },
+                { x: fwX + w1 - corr, y: fwY + corr },
+                { x: fwX, y: fwY + corr }
+            ]);
+
+            this.ball.x = fwX + corr / 2;
+            this.ball.y = fwY + h1 - 50;
+            this.hole.x = fwX + corr / 2;
+            this.hole.y = fwY + corr / 2;
+
+            // Bouncy bumpers in corners
+            this.bumpers.push({ x: fwX + w1 - corr / 2, y: fwY + corr / 2, radius: 20, bounceScale: 1.0 });
+            this.bumpers.push({ x: fwX + corr / 2, y: midY - corr / 2, radius: 20, bounceScale: 1.0 });
+        }
+
+        // Build walls from fairway polygons
+        this.fairwayPolygons.forEach(poly => {
+            for (let i = 0; i < poly.length; i++) {
+                const p1 = poly[i];
+                const p2 = poly[(i + 1) % poly.length];
+                this.walls.push({ x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y });
+            }
+        });
+
+        this.lastShotOrigin = { x: this.ball.x, y: this.ball.y };
+    }
+
+    updateScoreDisplay() {
+        const diff = this.totalStrokes - this.totalPar;
+        if (diff === 0) this.hudScore.textContent = 'E';
+        else if (diff > 0) this.hudScore.textContent = `+${diff}`;
+        else this.hudScore.textContent = `${diff}`;
+    }
+
+    /**
+     * MAIN GAME LOOP (Physics & Render)
+     */
+    loop(currentTime) {
+        const dt = Math.min((currentTime - this.lastTime) / 1000, 0.05);
+        this.lastTime = currentTime;
+
+        this.update(dt);
+        this.render();
+
+        requestAnimationFrame(this.loop.bind(this));
+    }
+
+    /**
+     * PHYSICS & LOGIC UPDATE
+     */
+    update(dt) {
+        this.hole.flagWave += 0.08;
+
+        // Update Spinners
+        this.spinners.forEach(spin => {
+            spin.angle += spin.speed;
+        });
+
+        // Update Particles
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life -= p.decay;
+            if (p.life <= 0) {
+                this.particles.splice(i, 1);
+            }
+        }
+
+        // Update Confetti
+        for (let i = this.confetti.length - 1; i >= 0; i--) {
+            const c = this.confetti[i];
+            c.x += c.vx;
+            c.y += c.vy;
+            c.vy += 0.35; // gravity
+            c.rotation += c.rotSpeed;
+            c.life -= c.decay;
+            if (c.life <= 0) {
+                this.confetti.splice(i, 1);
+            }
+        }
+
+        // Update Bumper bounce pulsing
+        this.bumpers.forEach(b => {
+            if (b.bounceScale > 1.0) {
+                b.bounceScale = Math.max(1.0, b.bounceScale - 0.05);
+            }
+        });
+
+        if (this.ball.inHole) {
+            // Sinking into hole animation
+            if (this.ball.scale > 0.05) {
+                this.ball.scale -= 0.06;
+                this.ball.x = Vec.lerp(this.ball.x, this.hole.x, 0.25);
+                this.ball.y = Vec.lerp(this.ball.y, this.hole.y, 0.25);
+            }
+            return;
+        }
+
+        if (!this.ball.isMoving) return;
+
+        // SUB-STEPPED PHYSICS SIMULATION (Prevents tunneling through walls at max power)
+        const subSteps = 5;
+        const subDt = 1 / subSteps;
+
+        for (let step = 0; step < subSteps; step++) {
+            // Current speed
+            const speed = Math.hypot(this.ball.vx, this.ball.vy);
+            if (speed < 0.02) {
+                this.ball.vx = 0;
+                this.ball.vy = 0;
+                this.onBallStop();
+                break;
+            }
+
+            // Check Sand Trap Friction
+            let friction = 0.984; // Standard putting green
+            for (const sand of this.sandTraps) {
+                const dx = (this.ball.x - sand.x) / sand.radiusX;
+                const dy = (this.ball.y - sand.y) / sand.radiusY;
+                if (dx * dx + dy * dy <= 1) {
+                    friction = 0.89; // High friction sand bunker!
+                    break;
+                }
+            }
+
+            // Check Water Hazards
+            for (const water of this.waterHazards) {
+                if (this.ball.x >= water.x && this.ball.x <= water.x + water.w &&
+                    this.ball.y >= water.y && this.ball.y <= water.y + water.h) {
+                    // Sunk into water!
+                    this.onWaterHazard();
+                    return;
+                }
+            }
+
+            // Apply friction
+            this.ball.vx *= Math.pow(friction, subDt);
+            this.ball.vy *= Math.pow(friction, subDt);
+
+            // Move ball
+            this.ball.x += this.ball.vx * subDt;
+            this.ball.y += this.ball.vy * subDt;
+
+            // Ball Trail
+            if (Math.random() < 0.3) {
+                this.ball.trail.push({ x: this.ball.x, y: this.ball.y, alpha: 0.5 });
+                if (this.ball.trail.length > 18) this.ball.trail.shift();
+            }
+
+            // Check Collision with Walls
+            this.checkWallCollisions();
+
+            // Check Collision with Bumpers
+            this.checkBumperCollisions();
+
+            // Check Collision with Spinners
+            this.checkSpinnerCollisions();
+
+            // Check Hole Interaction
+            const distToHole = Vec.dist(this.ball.x, this.ball.y, this.hole.x, this.hole.y);
+            if (distToHole < this.hole.radius * 1.5) {
+                // Hole gravitation pull
+                const pullAngle = Math.atan2(this.hole.y - this.ball.y, this.hole.x - this.ball.x);
+                const pullForce = 0.35 * (1 - distToHole / (this.hole.radius * 1.5));
+                this.ball.vx += Math.cos(pullAngle) * pullForce;
+                this.ball.vy += Math.sin(pullAngle) * pullForce;
+
+                // Inside cup radius
+                if (distToHole < this.hole.radius * 0.75) {
+                    const currentSpeed = Math.hypot(this.ball.vx, this.ball.vy);
+                    if (currentSpeed < 14) {
+                        // GOAL / HOLE SINK!
+                        this.onHoleSuccess();
+                        return;
+                    } else {
+                        // Lip-out (going too fast!)
+                        this.ball.vx *= 0.65;
+                        this.ball.vy *= 0.65;
+                        this.sound.playBounce();
+                    }
+                }
+            }
+        }
+
+        // Fade ball trail
+        for (let i = this.ball.trail.length - 1; i >= 0; i--) {
+            this.ball.trail[i].alpha -= 0.02;
+            if (this.ball.trail[i].alpha <= 0) this.ball.trail.splice(i, 1);
+        }
+    }
+
+    /**
+     * Check Line Segment Wall Collision & Bounce
+     */
+    checkWallCollisions() {
+        for (const wall of this.walls) {
+            const { x1, y1, x2, y2 } = wall;
+            const dist = this.distToSegment(this.ball.x, this.ball.y, x1, y1, x2, y2);
+            
+            if (dist.distance < this.ball.radius) {
+                // Collision normal
+                let nx = this.ball.x - dist.closestX;
+                let ny = this.ball.y - dist.closestY;
+                const len = Math.hypot(nx, ny);
+
+                if (len > 0.0001) {
+                    nx /= len;
+                    ny /= len;
+                } else {
+                    nx = -(y2 - y1);
+                    ny = x2 - x1;
+                    const wallLen = Math.hypot(nx, ny);
+                    nx /= wallLen;
+                    ny /= wallLen;
+                }
+
+                // Push ball outside wall
+                const penetration = this.ball.radius - dist.distance;
+                this.ball.x += nx * penetration;
+                this.ball.y += ny * penetration;
+
+                // Reflect velocity vector
+                const dot = this.ball.vx * nx + this.ball.vy * ny;
+                if (dot < 0) {
+                    const restitution = 0.76;
+                    this.ball.vx = (this.ball.vx - (1 + restitution) * dot * nx);
+                    this.ball.vy = (this.ball.vy - (1 + restitution) * dot * ny);
+                    this.sound.playBounce();
+                }
+            }
+        }
+    }
+
+    /**
+     * Check Pinball Bumpers
+     */
+    checkBumperCollisions() {
+        for (const b of this.bumpers) {
+            const dist = Vec.dist(this.ball.x, this.ball.y, b.x, b.y);
+            const minDist = this.ball.radius + b.radius;
+            if (dist < minDist) {
+                const angle = Math.atan2(this.ball.y - b.y, this.ball.x - b.x);
+                // Push ball out
+                this.ball.x = b.x + Math.cos(angle) * (minDist + 1);
+                this.ball.y = b.y + Math.sin(angle) * (minDist + 1);
+
+                // High bounce restitution
+                const speed = Math.max(12, Math.hypot(this.ball.vx, this.ball.vy) * 1.2);
+                this.ball.vx = Math.cos(angle) * speed;
+                this.ball.vy = Math.sin(angle) * speed;
+
+                b.bounceScale = 1.35;
+                this.sound.playBumper();
+                this.createSparks(this.ball.x, this.ball.y, angle, 0.8);
+            }
+        }
+    }
+
+    /**
+     * Check Rotating Spinners
+     */
+    checkSpinnerCollisions() {
+        for (const spin of this.spinners) {
+            const x1 = spin.x - Math.cos(spin.angle) * spin.length;
+            const y1 = spin.y - Math.sin(spin.angle) * spin.length;
+            const x2 = spin.x + Math.cos(spin.angle) * spin.length;
+            const y2 = spin.y + Math.sin(spin.angle) * spin.length;
+
+            const dist = this.distToSegment(this.ball.x, this.ball.y, x1, y1, x2, y2);
+            if (dist.distance < this.ball.radius + 6) {
+                const angle = spin.angle + Math.PI / 2;
+                this.ball.vx += Math.cos(angle) * 8;
+                this.ball.vy += Math.sin(angle) * 8;
+                this.sound.playBumper();
+            }
+        }
+    }
+
+    distToSegment(px, py, x1, y1, x2, y2) {
+        const l2 = Vec.distSq(x1, y1, x2, y2);
+        if (l2 === 0) return { distance: Vec.dist(px, py, x1, y1), closestX: x1, closestY: y1 };
+        let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+        t = Vec.clamp(t, 0, 1);
+        const closestX = x1 + t * (x2 - x1);
+        const closestY = y1 + t * (y2 - y1);
+        return { distance: Vec.dist(px, py, closestX, closestY), closestX, closestY };
+    }
+
+    /**
+     * When Ball Stops Near the Hole or on Course:
+     * Next shot can be played right from the ball's current resting position!
+     */
+    onBallStop() {
+        this.ball.isMoving = false;
+        this.strokes++;
+        this.hudStroke.textContent = this.strokes;
+
+        const distToPin = Math.round(Vec.dist(this.ball.x, this.ball.y, this.hole.x, this.hole.y) / 10);
+        this.showToast(`Ball Stopped! 🎯 Dist: ${distToPin}m - Drag to Putt Again!`);
+    }
+
+    /**
+     * Water Hazard Penalty
+     */
+    onWaterHazard() {
+        this.sound.playWater();
+        this.createWaterSplash(this.ball.x, this.ball.y);
+        this.strokes++;
+        this.hudStroke.textContent = this.strokes;
+
+        this.showToast('💦 Water Hazard! +1 Penalty Stroke');
+        
+        // Reset to last shot origin
+        setTimeout(() => {
+            this.ball.x = this.lastShotOrigin.x;
+            this.ball.y = this.lastShotOrigin.y;
+            this.ball.vx = 0;
+            this.ball.vy = 0;
+            this.ball.isMoving = false;
+        }, 500);
+    }
+
+    /**
+     * Level Complete / Ball in Hole!
+     */
+    onHoleSuccess() {
+        this.ball.inHole = true;
+        this.ball.vx = 0;
+        this.ball.vy = 0;
+        this.ball.isMoving = false;
+
+        this.sound.playHoleDrop();
+        this.createConfetti();
+
+        // Tally scores
+        this.totalStrokes += this.strokes;
+        this.totalPar += this.par;
+        this.updateScoreDisplay();
+
+        setTimeout(() => {
+            this.sound.playFanfare();
+            this.showVictoryModal();
+        }, 600);
+    }
+
+    showVictoryModal() {
+        const diff = this.strokes - this.par;
+        let title = 'PAR!';
+        let subtitle = 'Solid golf putting!';
+        let emoji = '⛳';
+
+        if (this.strokes === 1) {
+            title = '🌟 HOLE IN ONE! 🌟';
+            subtitle = 'Legendary shot! Absolute perfection!';
+            emoji = '👑';
+        } else if (diff <= -2) {
+            title = '🦅 EAGLE!';
+            subtitle = 'Remarkable precision and skill!';
+            emoji = '🦅';
+        } else if (diff === -1) {
+            title = '🐦 BIRDIE!';
+            subtitle = 'One under par! Brilliant putt!';
+            emoji = '🐦';
+        } else if (diff === 0) {
+            title = '⛳ PAR!';
+            subtitle = 'Right on target with par!';
+            emoji = '⛳';
+        } else if (diff === 1) {
+            title = 'BOGEY';
+            subtitle = 'Close putt, on to the next hole!';
+            emoji = '🏌️';
+        } else {
+            title = 'DOUBLE BOGEY';
+            subtitle = 'Tough hole, redeem yourself on the next!';
+            emoji = '💪';
+        }
+
+        document.getElementById('victory-emoji').textContent = emoji;
+        document.getElementById('victory-title').textContent = title;
+        document.getElementById('victory-subtitle').textContent = subtitle;
+        document.getElementById('victory-strokes').textContent = this.strokes;
+        document.getElementById('victory-par').textContent = this.par;
+        document.getElementById('victory-hole').textContent = this.level;
+
+        const totalDiff = this.totalStrokes - this.totalPar;
+        document.getElementById('victory-total').textContent = 
+            totalDiff === 0 ? 'E' : (totalDiff > 0 ? `+${totalDiff}` : `${totalDiff}`);
+
+        this.victoryModal.classList.add('active');
+    }
+
+    /**
+     * RENDERING PIPELINE
+     */
+    render() {
+        const ctx = this.ctx;
+        ctx.clearRect(0, 0, this.width, this.height);
+
+        // 1. Draw Course Green Fairway
+        this.renderFairways(ctx);
+
+        // 2. Draw Sand Traps
+        this.renderSandTraps(ctx);
+
+        // 3. Draw Water Hazards
+        this.renderWaterHazards(ctx);
+
+        // 4. Draw Bumpers & Obstacles
+        this.renderBumpers(ctx);
+        this.renderSpinners(ctx);
+
+        // 5. Draw Walls / Borders
+        this.renderWalls(ctx);
+
+        // 6. Draw Hole (Cup) & Flag
+        this.renderHole(ctx);
+
+        // 7. Draw Ball Trail
+        this.renderBallTrail(ctx);
+
+        // 8. Draw Ball
+        this.renderBall(ctx);
+
+        // 9. Draw Golf Stick & Dynamic Drag Power Tracker
+        if (!this.ball.isMoving && !this.ball.inHole) {
+            this.renderGolfStickAndAim(ctx);
+        }
+
+        // 10. Draw Particles & Confetti
+        this.renderParticles(ctx);
+    }
+
+    renderFairways(ctx) {
+        ctx.save();
+        this.fairwayPolygons.forEach(poly => {
+            if (poly.length < 3) return;
+
+            // Outer Grass Shadow
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+            ctx.shadowBlur = 18;
+            ctx.shadowOffsetY = 6;
+
+            ctx.beginPath();
+            ctx.moveTo(poly[0].x, poly[0].y);
+            for (let i = 1; i < poly.length; i++) {
+                ctx.lineTo(poly[i].x, poly[i].y);
+            }
+            ctx.closePath();
+
+            // Lush Putting Green Gradient
+            const grad = ctx.createLinearGradient(0, this.bounds.y, 0, this.bounds.y + this.bounds.height);
+            grad.addColorStop(0, '#15803d');
+            grad.addColorStop(0.5, '#16a34a');
+            grad.addColorStop(1, '#15803d');
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            ctx.shadowColor = 'transparent';
+
+            // Mowed grass stripes pattern
+            ctx.save();
+            ctx.clip();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+            const stripeW = 42;
+            for (let sx = this.bounds.x; sx < this.bounds.x + this.bounds.width; sx += stripeW * 2) {
+                ctx.fillRect(sx, this.bounds.y, stripeW, this.bounds.height);
+            }
+            ctx.restore();
+        });
+        ctx.restore();
+    }
+
+    renderSandTraps(ctx) {
+        this.sandTraps.forEach(sand => {
+            ctx.save();
+            ctx.beginPath();
+            ctx.ellipse(sand.x, sand.y, sand.radiusX, sand.radiusY, 0, 0, Math.PI * 2);
+            ctx.fillStyle = '#fde68a';
+            ctx.fill();
+
+            // Sand texture rim
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = '#d97706';
+            ctx.stroke();
+
+            // Inner shadow
+            ctx.fillStyle = 'rgba(180, 83, 9, 0.12)';
+            ctx.beginPath();
+            ctx.ellipse(sand.x, sand.y + 4, sand.radiusX * 0.8, sand.radiusY * 0.7, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        });
+    }
+
+    renderWaterHazards(ctx) {
+        this.waterHazards.forEach(water => {
+            ctx.save();
+            // Water Pond
+            ctx.fillStyle = '#0284c7';
+            ctx.fillRect(water.x, water.y, water.w, water.h);
+
+            // Shimmer waves
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+            const waveOffset = Math.sin(this.hole.flagWave) * 12;
+            ctx.fillRect(water.x + 8, water.y + water.h * 0.3 + waveOffset * 0.2, water.w - 16, 4);
+            ctx.fillRect(water.x + 16, water.y + water.h * 0.6 - waveOffset * 0.2, water.w - 32, 3);
+
+            // Shore border
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#38bdf8';
+            ctx.strokeRect(water.x, water.y, water.w, water.h);
+
+            ctx.restore();
+        });
+    }
+
+    renderBumpers(ctx) {
+        this.bumpers.forEach(b => {
+            ctx.save();
+            ctx.translate(b.x, b.y);
+            ctx.scale(b.bounceScale, b.bounceScale);
+
+            // Glowing Bumper Base
+            ctx.shadowColor = '#ec4899';
+            ctx.shadowBlur = 14;
+
+            ctx.beginPath();
+            ctx.arc(0, 0, b.radius, 0, Math.PI * 2);
+            ctx.fillStyle = '#db2777';
+            ctx.fill();
+
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#f472b6';
+            ctx.stroke();
+
+            // Inner Ring
+            ctx.beginPath();
+            ctx.arc(0, 0, b.radius * 0.55, 0, Math.PI * 2);
+            ctx.fillStyle = '#fdf2f8';
+            ctx.fill();
+
+            ctx.restore();
+        });
+    }
+
+    renderSpinners(ctx) {
+        this.spinners.forEach(spin => {
+            ctx.save();
+            ctx.translate(spin.x, spin.y);
+            ctx.rotate(spin.angle);
+
+            // Spinner blade
+            ctx.fillStyle = '#f59e0b';
+            ctx.fillRect(-spin.length, -6, spin.length * 2, 12);
+            ctx.strokeStyle = '#b45309';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(-spin.length, -6, spin.length * 2, 12);
+
+            // Center pivot
+            ctx.beginPath();
+            ctx.arc(0, 0, 9, 0, Math.PI * 2);
+            ctx.fillStyle = '#475569';
+            ctx.fill();
+
+            ctx.restore();
+        });
+    }
+
+    renderWalls(ctx) {
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        this.walls.forEach(w => {
+            // Drop Shadow
+            ctx.lineWidth = 9;
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+            ctx.beginPath();
+            ctx.moveTo(w.x1, w.y1 + 4);
+            ctx.lineTo(w.x2, w.y2 + 4);
+            ctx.stroke();
+
+            // 3D Wooden Wall Rim
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#78350f'; // Dark wood
+            ctx.beginPath();
+            ctx.moveTo(w.x1, w.y1);
+            ctx.lineTo(w.x2, w.y2);
+            ctx.stroke();
+
+            // Highlight top
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#b45309'; // Light wood highlight
+            ctx.beginPath();
+            ctx.moveTo(w.x1, w.y1 - 1);
+            ctx.lineTo(w.x2, w.y2 - 1);
+            ctx.stroke();
+        });
+        ctx.restore();
+    }
+
+    renderHole(ctx) {
+        const { x, y, radius, flagWave } = this.hole;
+        ctx.save();
+
+        // 3D Cup Depth
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#0f172a';
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(x, y, radius * 0.7, 0, Math.PI * 2);
+        ctx.fillStyle = '#020617';
+        ctx.fill();
+
+        // Cup White Rim
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.stroke();
+
+        // Flag Pole
+        const poleHeight = 44;
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y - poleHeight);
+        ctx.stroke();
+
+        // Flag Finial (Ball on top)
+        ctx.beginPath();
+        ctx.arc(x, y - poleHeight, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#fbbf24';
+        ctx.fill();
+
+        // Waving Flag
+        const flagW = 24;
+        const flagH = 16;
+        const wave = Math.sin(flagWave) * 3;
+
+        ctx.beginPath();
+        ctx.moveTo(x, y - poleHeight);
+        ctx.quadraticCurveTo(x + flagW * 0.5, y - poleHeight + wave, x + flagW, y - poleHeight + 4 + wave);
+        ctx.lineTo(x + flagW, y - poleHeight + flagH + wave);
+        ctx.lineTo(x, y - poleHeight + flagH);
+        ctx.closePath();
+
+        ctx.fillStyle = '#ef4444';
+        ctx.fill();
+
+        // Hole Number on Flag
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 9px system-ui';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${this.level}`, x + flagW * 0.45, y - poleHeight + flagH * 0.5 + wave * 0.5);
+
+        ctx.restore();
+    }
+
+    renderBallTrail(ctx) {
+        this.ball.trail.forEach(t => {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(t.x, t.y, this.ball.radius * 0.7, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 255, 255, ${t.alpha * 0.4})`;
+            ctx.fill();
+            ctx.restore();
+        });
+    }
+
+    renderBall(ctx) {
+        const { x, y, radius, scale } = this.ball;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+
+        // Ball Cast Shadow
+        ctx.beginPath();
+        ctx.ellipse(3, 4, radius * 0.9, radius * 0.65, 0, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.fill();
+
+        // 3D Sphere Shading (Golf Ball)
+        const grad = ctx.createRadialGradient(-radius * 0.35, -radius * 0.35, 1, 0, 0, radius);
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.7, '#e2e8f0');
+        grad.addColorStop(1, '#94a3b8');
+
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // Subtle dimples
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';
+        const dimples = [
+            [-3, -2], [2, -3], [-2, 3], [3, 2], [0, 0]
+        ];
+        dimples.forEach(([dx, dy]) => {
+            ctx.beginPath();
+            ctx.arc(dx, dy, 1.2, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        ctx.restore();
+    }
+
+    /**
+     * RENDER GOLF STICK (CLUB) & DYNAMIC SPEED TRACKER
+     * Shows:
+     * - Aim guide line
+     * - Realistic animated golf club pulling back
+     * - Real-time floating "LOW", "MED", "HIGH", "MAX" Badge & Meter directly on the stick!
+     */
+    renderGolfStickAndAim(ctx) {
+        const power = this.dragPower;
+        const aimAngle = this.dragAngle;
+        const ball = this.ball;
+
+        // Default aim angle towards hole if not dragging
+        const activeAngle = this.isDragging ? aimAngle : Math.atan2(this.hole.y - ball.y, this.hole.x - ball.x);
+
+        ctx.save();
+
+        // 1. Aim Trajectory Dotted Line
+        if (this.isDragging && power > 0.05) {
+            ctx.save();
+            ctx.strokeStyle = power > 0.75 ? 'rgba(239, 68, 68, 0.75)' : (power > 0.35 ? 'rgba(245, 158, 11, 0.75)' : 'rgba(16, 185, 129, 0.75)');
+            ctx.lineWidth = 2.5;
+            ctx.setLineDash([6, 6]);
+
+            const aimDist = 60 + power * 220;
+            const targetX = ball.x + Math.cos(activeAngle) * aimDist;
+            const targetY = ball.y + Math.sin(activeAngle) * aimDist;
+
+            ctx.beginPath();
+            ctx.moveTo(ball.x, ball.y);
+            ctx.lineTo(targetX, targetY);
+            ctx.stroke();
+
+            // Arrow head
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.arc(targetX, targetY, 4.5, 0, Math.PI * 2);
+            ctx.fillStyle = power > 0.75 ? '#ef4444' : (power > 0.35 ? '#f59e0b' : '#10b981');
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // 2. Golf Stick (Club) Drawing
+        // Pull back distance proportional to drag power
+        const baseOffset = 18;
+        const pullback = power * 75; // Pull back up to 75px
+        const stickDistance = baseOffset + pullback;
+
+        // The club is placed BEHIND the ball (opposite to the shot direction)
+        const clubX = ball.x - Math.cos(activeAngle) * stickDistance;
+        const clubY = ball.y - Math.sin(activeAngle) * stickDistance;
+
+        ctx.save();
+        ctx.translate(clubX, clubY);
+        ctx.rotate(activeAngle); // Pointing forward toward ball
+
+        // Club Head (Silver Putter Head perpendicular to shot)
+        const headWidth = 26;
+        const headHeight = 8;
+
+        // Metallic Club Shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        ctx.fillRect(-headHeight + 3, -headWidth / 2 + 4, headHeight, headWidth);
+
+        // Club Head Metallic Gradient
+        const headGrad = ctx.createLinearGradient(-headHeight, 0, 0, 0);
+        headGrad.addColorStop(0, '#64748b');
+        headGrad.addColorStop(0.5, '#f1f5f9');
+        headGrad.addColorStop(1, '#94a3b8');
+        ctx.fillStyle = headGrad;
+        ctx.fillRect(-headHeight, -headWidth / 2, headHeight, headWidth);
+
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-headHeight, -headWidth / 2, headHeight, headWidth);
+
+        // Shaft (extends backwards)
+        const shaftLength = 65;
+        const shaftGrad = ctx.createLinearGradient(-headHeight - shaftLength, 0, -headHeight, 0);
+        shaftGrad.addColorStop(0, '#1e293b'); // Dark rubber grip
+        shaftGrad.addColorStop(0.4, '#334155');
+        shaftGrad.addColorStop(0.5, '#cbd5e1'); // Steel shaft
+        shaftGrad.addColorStop(1, '#94a3b8');
+
+        ctx.fillStyle = shaftGrad;
+        ctx.fillRect(-headHeight - shaftLength, -2.5, shaftLength, 5);
+
+        // Grip wrap lines
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(-headHeight - shaftLength, -3, 24, 6);
+
+        ctx.restore();
+
+        // 3. FLOATING SPEED TRACKER BADGE (Directly above the stick)
+        if (this.isDragging && power > 0.05) {
+            ctx.save();
+            // Position badge near the pulled-back stick
+            const badgeDist = stickDistance + 35;
+            const badgeX = ball.x - Math.cos(activeAngle) * badgeDist;
+            const badgeY = ball.y - Math.sin(activeAngle) * badgeDist;
+
+            // Determine Label & Color
+            let badgeText = '🟢 LOW';
+            let badgeColor = '#10b981';
+            let bgAlpha = 'rgba(6, 78, 59, 0.9)';
+
+            if (power >= 0.92) {
+                badgeText = '💥 MAX!';
+                badgeColor = '#ec4899';
+                bgAlpha = 'rgba(131, 24, 67, 0.95)';
+            } else if (power >= 0.70) {
+                badgeText = '🔴 HIGH';
+                badgeColor = '#ef4444';
+                bgAlpha = 'rgba(127, 29, 29, 0.95)';
+            } else if (power >= 0.35) {
+                badgeText = '🟡 MED';
+                badgeColor = '#f59e0b';
+                bgAlpha = 'rgba(120, 53, 15, 0.9)';
+            }
+
+            // Draw Floating Badge Box
+            const padX = 14;
+            const padY = 6;
+            ctx.font = 'bold 13px system-ui, -apple-system, sans-serif';
+            const textWidth = ctx.measureText(badgeText).width;
+            const boxW = textWidth + padX * 2;
+            const boxH = 26;
+
+            ctx.translate(badgeX, badgeY);
+
+            // Badge Glow
+            ctx.shadowColor = badgeColor;
+            ctx.shadowBlur = 12;
+
+            ctx.fillStyle = bgAlpha;
+            ctx.beginPath();
+            ctx.roundRect(-boxW / 2, -boxH / 2, boxW, boxH, 13);
+            ctx.fill();
+
+            // Badge Border
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = badgeColor;
+            ctx.stroke();
+
+            // Text
+            ctx.shadowColor = 'transparent';
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(badgeText, 0, 0);
+
+            ctx.restore();
+        }
+
+        ctx.restore();
+    }
+
+    renderParticles(ctx) {
+        // Sparks
+        this.particles.forEach(p => {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = p.life;
+            ctx.fill();
+            ctx.restore();
+        });
+
+        // Confetti
+        this.confetti.forEach(c => {
+            ctx.save();
+            ctx.translate(c.x, c.y);
+            ctx.rotate(c.rotation);
+            ctx.fillStyle = c.color;
+            ctx.globalAlpha = c.life;
+            ctx.fillRect(-c.size / 2, -c.size / 2, c.size, c.size);
+            ctx.restore();
+        });
+    }
+}
+
+// Initialize Game on Window Load
+window.addEventListener('DOMContentLoaded', () => {
+    window.game = new GolfGame();
+});
+</script>
+</body>
+</html>

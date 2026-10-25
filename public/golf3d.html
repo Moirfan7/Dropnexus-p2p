@@ -1,0 +1,2704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Super 3D Mini Golf Pro ⛳ | Classic & Wall Pass Modes</title>
+    <style>
+        :root {
+            --primary: #10b981;
+            --primary-dark: #059669;
+            --accent: #f59e0b;
+            --danger: #ef4444;
+            --surface: rgba(15, 23, 42, 0.88);
+            --border: rgba(255, 255, 255, 0.2);
+            --text-light: #f8fafc;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #022c22;
+            font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            color: var(--text-light);
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: grab;
+        }
+
+        #canvas-container:active {
+            cursor: grabbing;
+        }
+
+        /* Top HUD Bar */
+        .hud-top {
+            position: absolute;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--surface);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            padding: 8px 18px;
+            border-radius: 999px;
+            box-shadow: 0 12px 30px -5px rgba(0, 0, 0, 0.6);
+            z-index: 10;
+            max-width: 96vw;
+        }
+
+        /* Mode Selector Pill */
+        .btn-mode-toggle {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+            white-space: nowrap;
+        }
+
+        .btn-mode-toggle:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 18px rgba(37, 99, 235, 0.6);
+        }
+
+        .hud-pill {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2px 8px;
+        }
+
+        .hud-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #94a3b8;
+            font-weight: 700;
+        }
+
+        .hud-value {
+            font-size: 17px;
+            font-weight: 800;
+            color: #ffffff;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .hud-divider {
+            width: 1px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-icon {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid var(--border);
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 15px;
+        }
+
+        .btn-icon:hover {
+            background: rgba(255, 255, 255, 0.28);
+            transform: scale(1.08);
+        }
+
+        /* Mini-Map Radar (Top Left) */
+        .minimap-container {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            width: 100px;
+            height: 140px;
+            background: var(--surface);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            z-index: 10;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 6px;
+        }
+
+        .minimap-title {
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            color: #94a3b8;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        #minimap-canvas {
+            width: 88px;
+            height: 110px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        /* Wind Badge (Top Right) */
+        .wind-pill {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            background: var(--surface);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            padding: 7px 14px;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #cbd5e1;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            z-index: 10;
+        }
+
+        /* Ball Customizer Drawer */
+        .skins-toggle-btn {
+            position: absolute;
+            bottom: 24px;
+            left: 20px;
+            background: var(--surface);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            z-index: 10;
+            transition: all 0.2s;
+        }
+
+        .skins-toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .skins-modal {
+            position: absolute;
+            bottom: 70px;
+            left: 20px;
+            background: var(--surface);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 12px;
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 10;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+        }
+
+        .skins-modal.active {
+            display: flex;
+        }
+
+        .skin-opt {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 700;
+            transition: all 0.15s;
+        }
+
+        .skin-opt:hover, .skin-opt.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: #34d399;
+        }
+
+        .skin-circle {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.4);
+        }
+
+        /* Bottom Speedometer HUD */
+        .hud-bottom {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            background: var(--surface);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            padding: 10px 24px;
+            border-radius: 20px;
+            box-shadow: 0 12px 35px rgba(0,0,0,0.7);
+            z-index: 10;
+            pointer-events: none;
+            transition: opacity 0.25s, transform 0.25s;
+            min-width: 300px;
+        }
+
+        .speed-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        .speed-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #94a3b8;
+            font-weight: 700;
+        }
+
+        /* Badges: LOW / MED / HIGH / MAX */
+        .speed-badge {
+            font-size: 13px;
+            font-weight: 900;
+            padding: 3px 14px;
+            border-radius: 999px;
+            letter-spacing: 1px;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 12px rgba(0, 0, 0, 0.4);
+            text-transform: uppercase;
+        }
+
+        .speed-badge.ready {
+            background: rgba(255, 255, 255, 0.15);
+            color: #cbd5e1;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .speed-badge.low {
+            background: #10b981;
+            color: #022c22;
+            border: 1px solid #34d399;
+            box-shadow: 0 0 18px rgba(16, 185, 129, 0.85);
+        }
+
+        .speed-badge.med {
+            background: #f59e0b;
+            color: #451a03;
+            border: 1px solid #fbbf24;
+            box-shadow: 0 0 18px rgba(245, 158, 11, 0.85);
+        }
+
+        .speed-badge.high {
+            background: #ef4444;
+            color: #ffffff;
+            border: 1px solid #f87171;
+            box-shadow: 0 0 24px rgba(239, 68, 68, 0.95);
+            animation: pulse-high 0.25s infinite alternate;
+        }
+
+        .speed-badge.max {
+            background: linear-gradient(135deg, #ec4899, #ef4444, #eab308);
+            color: #ffffff;
+            border: 1px solid #ffffff;
+            box-shadow: 0 0 28px rgba(236, 72, 153, 1);
+            animation: pulse-max 0.18s infinite alternate;
+        }
+
+        @keyframes pulse-high {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.08); }
+        }
+
+        @keyframes pulse-max {
+            0% { transform: scale(1.04); }
+            100% { transform: scale(1.16); }
+        }
+
+        .speed-meter-container {
+            width: 100%;
+            height: 14px;
+            background: rgba(0, 0, 0, 0.55);
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .speed-meter-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #10b981 0%, #f59e0b 50%, #ef4444 85%, #ec4899 100%);
+            border-radius: 8px;
+            transition: width 0.05s linear;
+        }
+
+        .speed-footer {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            font-size: 11px;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+
+        /* 3D Floating World-Space Speed Badge */
+        #floating-3d-badge {
+            position: absolute;
+            transform: translate(-50%, -100%);
+            padding: 5px 16px;
+            border-radius: 999px;
+            font-weight: 900;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            pointer-events: none;
+            z-index: 5;
+            display: none;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+            white-space: nowrap;
+            transition: transform 0.04s ease-out;
+        }
+
+        /* Drag Hint */
+        .drag-hint {
+            position: absolute;
+            bottom: 88px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            padding: 6px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #e2e8f0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            white-space: nowrap;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            z-index: 10;
+        }
+
+        /* Toast notification */
+        .toast {
+            position: absolute;
+            top: 75px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.88);
+            border: 1px solid var(--border);
+            color: #ffffff;
+            padding: 8px 24px;
+            border-radius: 999px;
+            font-size: 14px;
+            font-weight: 700;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s;
+            z-index: 50;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        /* Modals */
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.78);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-box {
+            background: linear-gradient(145deg, #1e293b, #0f172a);
+            border: 2px solid var(--border);
+            border-radius: 28px;
+            padding: 34px 38px;
+            max-width: 440px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.9), 0 0 40px rgba(16, 185, 129, 0.35);
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .modal-overlay.active .modal-box {
+            transform: scale(1);
+        }
+
+        .modal-title {
+            font-size: 28px;
+            font-weight: 900;
+            color: #ffffff;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .modal-subtitle {
+            font-size: 15px;
+            color: #94a3b8;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .score-card {
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 18px;
+            padding: 16px;
+            margin-bottom: 24px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .score-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .score-item-label {
+            font-size: 11px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .score-item-val {
+            font-size: 22px;
+            font-weight: 900;
+            color: #ffffff;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: 800;
+            border-radius: 999px;
+            cursor: pointer;
+            width: 100%;
+            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.4);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 25px rgba(16, 185, 129, 0.6);
+        }
+
+        .help-list {
+            text-align: left;
+            margin-bottom: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            font-size: 14px;
+            color: #cbd5e1;
+        }
+
+        .help-item {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .help-icon {
+            font-size: 20px;
+            min-width: 28px;
+        }
+    </style>
+
+    <!-- Three.js Local Offline Copy with CDN Fallback -->
+    <script src="js/three.min.js"></script>
+    <script>
+        if (typeof THREE === 'undefined') {
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');
+        }
+    </script>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<!-- Mini-Map Radar -->
+<div class="minimap-container">
+    <span class="minimap-title">Course Map</span>
+    <canvas id="minimap-canvas" width="88" height="110"></canvas>
+</div>
+
+<!-- Wind Indicator -->
+<div class="wind-pill">
+    <span>🌬️</span>
+    <span id="wind-text">Wind: 3 km/h ↗</span>
+</div>
+
+<!-- Ball Skin Selector -->
+<button class="skins-toggle-btn" id="btn-skins">🎨 Ball Skin</button>
+<div class="skins-modal" id="skins-modal">
+    <div class="skin-opt active" data-skin="white">
+        <div class="skin-circle" style="background: #ffffff;"></div> Classic Pro V1
+    </div>
+    <div class="skin-opt" data-skin="gold">
+        <div class="skin-circle" style="background: radial-gradient(circle, #fde047, #b45309);"></div> Golden Master
+    </div>
+    <div class="skin-opt" data-skin="neon">
+        <div class="skin-circle" style="background: #38bdf8; box-shadow: 0 0 8px #38bdf8;"></div> Neon Cyber
+    </div>
+    <div class="skin-opt" data-skin="fire">
+        <div class="skin-circle" style="background: #ef4444; box-shadow: 0 0 8px #ef4444;"></div> Magma Fire
+    </div>
+</div>
+
+<!-- Top HUD Bar -->
+<div class="hud-top">
+    <button class="btn-mode-toggle" id="btn-mode-toggle">
+        🎮 Mode: <span id="mode-name">⛳ Classic</span>
+    </button>
+    <div class="hud-divider"></div>
+    <div class="hud-pill">
+        <span class="hud-label" id="label-stat1">Hole</span>
+        <span class="hud-value" id="hud-stat1">1</span>
+    </div>
+    <div class="hud-divider"></div>
+    <div class="hud-pill">
+        <span class="hud-label" id="label-stat2">Stroke</span>
+        <span class="hud-value" id="hud-stat2">1</span>
+    </div>
+    <div class="hud-divider"></div>
+    <div class="hud-pill">
+        <span class="hud-label" id="label-stat3">Score / Par</span>
+        <span class="hud-value" id="hud-stat3">Par 3</span>
+    </div>
+    <div class="hud-divider"></div>
+    <button class="btn-icon" id="btn-cam" title="Toggle Camera View">🎥</button>
+    <button class="btn-icon" id="btn-sound" title="Toggle Sound">🔊</button>
+    <button class="btn-icon" id="btn-reset-hole" title="Reset Current Shot">🔄</button>
+    <button class="btn-icon" id="btn-help" title="Instructions">❓</button>
+</div>
+
+<!-- Drag Hint -->
+<div class="drag-hint" id="drag-hint">
+    🎯 Drag backwards in 3D to charge speed & release to kick ball!
+</div>
+
+<!-- Floating 3D Badge -->
+<div id="floating-3d-badge">🟢 LOW POWER</div>
+
+<!-- Bottom Speedometer & Power Tracker -->
+<div class="hud-bottom" id="hud-bottom">
+    <div class="speed-header">
+        <span class="speed-title">⚡ 3D Stick Power Tracker</span>
+        <span class="speed-badge ready" id="speed-badge">READY</span>
+    </div>
+    <div class="speed-meter-container">
+        <div class="speed-meter-fill" id="speed-meter-fill"></div>
+    </div>
+    <div class="speed-footer">
+        <span>🟢 LOW</span>
+        <span>🟡 MED</span>
+        <span>🔴 HIGH</span>
+        <span id="speed-percent">0%</span>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div class="toast" id="toast"></div>
+
+<!-- Victory Modal -->
+<div class="modal-overlay" id="victory-modal">
+    <div class="modal-box">
+        <div style="font-size: 52px; margin-bottom: 8px;" id="victory-emoji">🏆</div>
+        <h2 class="modal-title" id="victory-title">HOLE IN ONE!</h2>
+        <p class="modal-subtitle" id="victory-subtitle">Incredible 3D putt straight into the cup!</p>
+
+        <div class="score-card">
+            <div class="score-item">
+                <span class="score-item-label" id="victory-card-lbl1">Strokes Taken</span>
+                <span class="score-item-val" id="victory-card-val1">1</span>
+            </div>
+            <div class="score-item">
+                <span class="score-item-label" id="victory-card-lbl2">Target</span>
+                <span class="score-item-val" id="victory-card-val2">3</span>
+            </div>
+            <div class="score-item">
+                <span class="score-item-label" id="victory-card-lbl3">Current Stage</span>
+                <span class="score-item-val" id="victory-card-val3">1</span>
+            </div>
+            <div class="score-item">
+                <span class="score-item-label" id="victory-card-lbl4">Total Score</span>
+                <span class="score-item-val" id="victory-card-val4">E</span>
+            </div>
+        </div>
+
+        <button class="btn-primary" id="btn-next-level">
+            Next Stage ➔
+        </button>
+    </div>
+</div>
+
+<!-- Help Modal -->
+<div class="modal-overlay" id="help-modal">
+    <div class="modal-box">
+        <h2 class="modal-title">⛳ 2 Game Modes In One</h2>
+        <p class="modal-subtitle">Choose Your Way To Putt!</p>
+        
+        <div class="help-list">
+            <div class="help-item">
+                <span class="help-icon">⛳</span>
+                <div>
+                    <strong>1. Classic Mini-Golf Mode:</strong> Endless courses with sand traps, water hazards, bouncy bumpers, windmills, and sinking the ball into the cup flag!
+                </div>
+            </div>
+            <div class="help-item">
+                <span class="help-icon">🧱</span>
+                <div>
+                    <strong>2. Wall Pass (Gate Runner) Mode:</strong> Saamne multiple small barriers/walls hain, jinme <em>sirf ek single hole/gate</em> hai. Ball ko us single hole ke aar-paar nikalna hai! Jaise hi paar hogi, aage new wall generate ho jayegi!
+                </div>
+            </div>
+            <div class="help-item">
+                <span class="help-icon">⚡</span>
+                <div>
+                    <strong>Speed Tracker:</strong> Drag karke <span style="color:#34d399;">LOW</span>, <span style="color:#fbbf24;">MED</span>, <span style="color:#f87171;">HIGH/MAX</span> power set karein aur chhod kar kick karein!
+                </div>
+            </div>
+            <div class="help-item">
+                <span class="help-icon">🔄</span>
+                <div>
+                    <strong>Switch Modes Anytime:</strong> Top bar me 🎮 button se kisi bhi waqt Classic Golf aur Wall Pass me switch karein!
+                </div>
+            </div>
+        </div>
+
+        <button class="btn-primary" id="btn-close-help">Play Now! 🏌️‍♂️</button>
+    </div>
+</div>
+
+<script>
+/**
+ * PROCEDURAL AUDIO SYNTHESIZER
+ */
+class SoundEngine {
+    constructor() {
+        this.ctx = null;
+        this.enabled = true;
+        this.ambienceActive = false;
+    }
+
+    init() {
+        if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) this.ctx = new AudioCtx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+        if (!this.ambienceActive && this.ctx) {
+            this.startAmbience();
+        }
+    }
+
+    startAmbience() {
+        this.ambienceActive = true;
+        const scheduleChirp = () => {
+            if (!this.enabled || !this.ctx) return;
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(2400, now);
+            osc.frequency.exponentialRampToValueAtTime(3200, now + 0.08);
+            osc.frequency.exponentialRampToValueAtTime(2800, now + 0.16);
+
+            gain.gain.setValueAtTime(0.04, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.22);
+
+            setTimeout(scheduleChirp, 6000 + Math.random() * 8000);
+        };
+        setTimeout(scheduleChirp, 3000);
+    }
+
+    playSwing(power) {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(160 + power * 260, now);
+        osc.frequency.exponentialRampToValueAtTime(42, now + 0.13);
+
+        gain.gain.setValueAtTime(0.38 + power * 0.48, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.15);
+
+        const bufferSize = this.ctx.sampleRate * 0.04;
+        const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = noiseBuffer;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.value = 1500 + power * 900;
+        const noiseGain = this.ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.35 + power * 0.45, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+
+        noise.connect(filter);
+        filter.connect(noiseGain);
+        noiseGain.connect(this.ctx.destination);
+        noise.start(now);
+    }
+
+    playBounce() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(280, now);
+        osc.frequency.exponentialRampToValueAtTime(100, now + 0.07);
+
+        gain.gain.setValueAtTime(0.24, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.08);
+    }
+
+    playBumper() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(560, now);
+        osc.frequency.exponentialRampToValueAtTime(960, now + 0.12);
+
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.2);
+    }
+
+    playHoleDrop() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const osc1 = this.ctx.createOscillator();
+        const osc2 = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(460, now);
+        osc1.frequency.exponentialRampToValueAtTime(220, now + 0.25);
+
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(920, now);
+        osc2.frequency.exponentialRampToValueAtTime(340, now + 0.25);
+
+        gain.gain.setValueAtTime(0.42, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + 0.35);
+        osc2.stop(now + 0.35);
+    }
+
+    playGatePass() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        // Triumphant 2-tone gate clear sound
+        const now = this.ctx.currentTime;
+        const osc1 = this.ctx.createOscillator();
+        const osc2 = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc1.type = 'triangle';
+        osc1.frequency.setValueAtTime(659.25, now); // E5
+        osc1.frequency.setValueAtTime(880.00, now + 0.09); // A5
+
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+
+        osc1.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.32);
+    }
+
+    playFanfare() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, idx) => {
+            const start = this.ctx.currentTime + idx * 0.11;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, start);
+
+            gain.gain.setValueAtTime(0.3, start);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.45);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(start);
+            osc.stop(start + 0.5);
+        });
+    }
+
+    playWater() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(260, now);
+        osc.frequency.linearRampToValueAtTime(80, now + 0.35);
+
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.38);
+    }
+}
+
+/**
+ * DETERMINISTIC PRNG
+ */
+class PRNG {
+    constructor(seed = 1) {
+        this.seed = seed;
+    }
+    next() {
+        this.seed = (this.seed * 9301 + 49297) % 233280;
+        return this.seed / 233280;
+    }
+    range(min, max) {
+        return min + this.next() * (max - min);
+    }
+}
+
+/**
+ * 3D MINI GOLF ENGINE - WITH CLASSIC & WALL PASS MODES
+ */
+class GolfGame3D {
+    constructor() {
+        this.container = document.getElementById('canvas-container');
+        this.sound = new SoundEngine();
+
+        // Game Modes: 'classic' or 'wallpass'
+        this.gameMode = 'classic';
+
+        // Classic Golf State
+        this.level = 1;
+        this.strokes = 1;
+        this.totalStrokes = 0;
+        this.totalPar = 0;
+        this.par = 3;
+
+        // Wall Pass Mode State
+        this.wallPass = {
+            score: 0,
+            bestScore: 0,
+            nextGateZ: 14,
+            currentGateIndex: 0,
+            gates: [],
+            runwayEndZ: 50
+        };
+
+        // Camera Views: 0 = Follow, 1 = Top-Down, 2 = Cinematic Orbit
+        this.cameraMode = 0;
+        this.cameraTarget = new THREE.Vector3();
+        this.cameraPos = new THREE.Vector3();
+
+        // 3D Physics State
+        this.ballRadius = 0.28;
+        this.ballState = {
+            pos: new THREE.Vector3(),
+            vel: new THREE.Vector3(),
+            isMoving: false,
+            inHole: false,
+            sinkAnim: 0
+        };
+        this.lastShotOrigin = new THREE.Vector3();
+
+        // Hole State
+        this.holeRadius = 0.52;
+        this.holePos = new THREE.Vector3();
+
+        // Geometry & Colliders
+        this.courseBlocks = [];
+        this.colliders = [];
+        this.sandPits = [];
+        this.waterHazards = [];
+        this.bumpers = [];
+        this.spinners = [];
+
+        // Stick & Aim State
+        this.isDragging = false;
+        this.dragStart = { x: 0, y: 0 };
+        this.dragPower = 0;
+        this.aimAngle = 0;
+        this.maxDragDistance = 180;
+
+        // Wind State
+        this.windAngle = Math.PI * 0.25;
+        this.windSpeed = 3.5;
+
+        // Skins
+        this.currentSkin = 'white';
+
+        // Particles
+        this.confettiParticles = [];
+        this.sparkParticles = [];
+
+        this.initThree();
+        this.initMaterials();
+        this.initDom();
+        this.initEvents();
+
+        // Load Initial Mode
+        this.loadLevel(this.level);
+
+        // 120Hz Sub-Stepped Physics Loop
+        this.clock = new THREE.Clock();
+        this.accumulator = 0;
+        this.fixedDt = 1 / 120;
+
+        this.animate = this.animate.bind(this);
+        requestAnimationFrame(this.animate);
+    }
+
+    initThree() {
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x064e3b);
+        this.scene.fog = new THREE.FogExp2(0x064e3b, 0.014);
+
+        this.camera = new THREE.PerspectiveCamera(54, window.innerWidth / window.innerHeight, 0.1, 250);
+        this.camera.position.set(0, 10, 16);
+
+        this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 1.15;
+        this.container.appendChild(this.renderer.domElement);
+
+        const hemiLight = new THREE.HemisphereLight(0xecfdf5, 0x064e3b, 0.65);
+        this.scene.add(hemiLight);
+
+        this.dirLight = new THREE.DirectionalLight(0xfffbeb, 1.35);
+        this.dirLight.position.set(16, 26, 14);
+        this.dirLight.castShadow = true;
+        this.dirLight.shadow.mapSize.width = 2048;
+        this.dirLight.shadow.mapSize.height = 2048;
+        this.dirLight.shadow.camera.near = 0.5;
+        this.dirLight.shadow.camera.far = 70;
+        const d = 28;
+        this.dirLight.shadow.camera.left = -d;
+        this.dirLight.shadow.camera.right = d;
+        this.dirLight.shadow.camera.top = d;
+        this.dirLight.shadow.camera.bottom = -d;
+        this.dirLight.shadow.bias = -0.0004;
+        this.scene.add(this.dirLight);
+
+        this.createEnvironment();
+    }
+
+    createEnvironment() {
+        const mountainMat = new THREE.MeshLambertMaterial({ color: 0x065f46 });
+        for (let i = 0; i < 20; i++) {
+            const angle = (i / 20) * Math.PI * 2;
+            const dist = 60 + Math.random() * 20;
+            const radius = 12 + Math.random() * 16;
+            const mountain = new THREE.Mesh(new THREE.ConeGeometry(radius, 16, 8), mountainMat);
+            mountain.position.set(Math.cos(angle) * dist, 3, Math.sin(angle) * dist);
+            this.scene.add(mountain);
+        }
+
+        const trunkMat = new THREE.MeshLambertMaterial({ color: 0x451a03 });
+        const foliageMat = new THREE.MeshLambertMaterial({ color: 0x047857 });
+
+        for (let i = 0; i < 30; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 22 + Math.random() * 30;
+            const treeGroup = new THREE.Group();
+
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.35, 1.8, 6), trunkMat);
+            trunk.position.y = 0.9;
+            treeGroup.add(trunk);
+
+            for (let t = 0; t < 3; t++) {
+                const cone = new THREE.Mesh(new THREE.ConeGeometry(1.6 - t * 0.35, 2.0, 7), foliageMat);
+                cone.position.y = 1.8 + t * 1.2;
+                cone.castShadow = true;
+                treeGroup.add(cone);
+            }
+
+            treeGroup.position.set(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
+            const scale = 0.7 + Math.random() * 0.6;
+            treeGroup.scale.set(scale, scale, scale);
+            this.scene.add(treeGroup);
+        }
+
+        const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
+        this.clouds = [];
+        for (let i = 0; i < 12; i++) {
+            const cloudGroup = new THREE.Group();
+            for (let c = 0; c < 5; c++) {
+                const puff = new THREE.Mesh(new THREE.DodecahedronGeometry(2.2 + Math.random() * 2.2), cloudMat);
+                puff.position.set((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 6);
+                cloudGroup.add(puff);
+            }
+            cloudGroup.position.set((Math.random() - 0.5) * 90, 24 + Math.random() * 10, (Math.random() - 0.5) * 90);
+            this.scene.add(cloudGroup);
+            this.clouds.push(cloudGroup);
+        }
+    }
+
+    initMaterials() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#16a34a';
+        ctx.fillRect(0, 0, 512, 512);
+
+        ctx.fillStyle = '#15803d';
+        for (let i = 0; i < 512; i += 64) {
+            ctx.fillRect(i, 0, 32, 512);
+        }
+        for (let i = 0; i < 8000; i++) {
+            ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
+            ctx.fillRect(Math.random() * 512, Math.random() * 512, 2, 2);
+        }
+
+        const grassTex = new THREE.CanvasTexture(canvas);
+        grassTex.wrapS = THREE.RepeatWrapping;
+        grassTex.wrapT = THREE.RepeatWrapping;
+        grassTex.repeat.set(4, 8);
+
+        this.mats = {
+            green: new THREE.MeshStandardMaterial({
+                map: grassTex,
+                roughness: 0.8,
+                metalness: 0.05
+            }),
+            woodWall: new THREE.MeshStandardMaterial({
+                color: 0x78350f,
+                roughness: 0.55,
+                metalness: 0.1
+            }),
+            gateWall: new THREE.MeshStandardMaterial({
+                color: 0x1e293b,
+                roughness: 0.4,
+                metalness: 0.2
+            }),
+            gateHoleNeon: new THREE.MeshBasicMaterial({
+                color: 0x10b981
+            }),
+            wallCap: new THREE.MeshStandardMaterial({
+                color: 0xd97706,
+                roughness: 0.45,
+                metalness: 0.2
+            }),
+            sand: new THREE.MeshStandardMaterial({
+                color: 0xfde047,
+                roughness: 0.95,
+                metalness: 0.0
+            }),
+            water: new THREE.MeshStandardMaterial({
+                color: 0x0284c7,
+                roughness: 0.1,
+                metalness: 0.3,
+                transparent: true,
+                opacity: 0.85
+            }),
+            ballWhite: new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                roughness: 0.25,
+                metalness: 0.05
+            }),
+            ballGold: new THREE.MeshStandardMaterial({
+                color: 0xfbbf24,
+                roughness: 0.15,
+                metalness: 0.95
+            }),
+            ballNeon: new THREE.MeshStandardMaterial({
+                color: 0x38bdf8,
+                roughness: 0.2,
+                metalness: 0.3,
+                emissive: 0x0284c7,
+                emissiveIntensity: 0.5
+            }),
+            ballFire: new THREE.MeshStandardMaterial({
+                color: 0xef4444,
+                roughness: 0.2,
+                metalness: 0.2,
+                emissive: 0xdc2626,
+                emissiveIntensity: 0.6
+            }),
+            clubHead: new THREE.MeshStandardMaterial({
+                color: 0xf1f5f9,
+                metalness: 0.9,
+                roughness: 0.18
+            }),
+            clubShaft: new THREE.MeshStandardMaterial({
+                color: 0x334155,
+                metalness: 0.85,
+                roughness: 0.25
+            }),
+            clubGrip: new THREE.MeshStandardMaterial({
+                color: 0x0f172a,
+                roughness: 0.9,
+                metalness: 0.0
+            }),
+            cupRim: new THREE.MeshStandardMaterial({
+                color: 0xf8fafc,
+                roughness: 0.25,
+                metalness: 0.8
+            }),
+            bumper: new THREE.MeshStandardMaterial({
+                color: 0xec4899,
+                roughness: 0.25,
+                metalness: 0.4,
+                emissive: 0xdb2777,
+                emissiveIntensity: 0.5
+            })
+        };
+    }
+
+    initDom() {
+        this.btnModeToggle = document.getElementById('btn-mode-toggle');
+        this.modeNameEl = document.getElementById('mode-name');
+        this.labelStat1 = document.getElementById('label-stat1');
+        this.hudStat1 = document.getElementById('hud-stat1');
+        this.labelStat2 = document.getElementById('label-stat2');
+        this.hudStat2 = document.getElementById('hud-stat2');
+        this.labelStat3 = document.getElementById('label-stat3');
+        this.hudStat3 = document.getElementById('hud-stat3');
+
+        this.speedBadge = document.getElementById('speed-badge');
+        this.speedMeterFill = document.getElementById('speed-meter-fill');
+        this.speedPercent = document.getElementById('speed-percent');
+        this.floatingBadge = document.getElementById('floating-3d-badge');
+        this.dragHint = document.getElementById('drag-hint');
+        this.toastEl = document.getElementById('toast');
+        this.victoryModal = document.getElementById('victory-modal');
+        this.helpModal = document.getElementById('help-modal');
+        this.minimapCanvas = document.getElementById('minimap-canvas');
+        this.minimapCtx = this.minimapCanvas.getContext('2d');
+        this.windText = document.getElementById('wind-text');
+
+        // Mode Switch Toggle
+        this.btnModeToggle.addEventListener('click', () => {
+            this.toggleGameMode();
+        });
+
+        document.getElementById('btn-sound').addEventListener('click', (e) => {
+            this.sound.enabled = !this.sound.enabled;
+            e.currentTarget.textContent = this.sound.enabled ? '🔊' : '🔇';
+            this.showToast(this.sound.enabled ? 'Sound Enabled 🔊' : 'Sound Muted 🔇');
+        });
+
+        document.getElementById('btn-cam').addEventListener('click', () => {
+            this.cameraMode = (this.cameraMode + 1) % 3;
+            const names = ['Behind Ball 🎥', 'Top-Down 🦅', 'Cinematic Orbit 🔄'];
+            this.showToast(names[this.cameraMode]);
+        });
+
+        document.getElementById('btn-reset-hole').addEventListener('click', () => {
+            this.ballState.pos.copy(this.lastShotOrigin);
+            this.ballState.vel.set(0, 0, 0);
+            this.ballState.isMoving = false;
+            this.updateBallMesh();
+            this.showToast('Ball Reset to Tee 🔄');
+        });
+
+        document.getElementById('btn-help').addEventListener('click', () => {
+            this.helpModal.classList.add('active');
+        });
+
+        document.getElementById('btn-close-help').addEventListener('click', () => {
+            this.helpModal.classList.remove('active');
+        });
+
+        document.getElementById('btn-next-level').addEventListener('click', () => {
+            this.victoryModal.classList.remove('active');
+            if (this.gameMode === 'classic') {
+                this.level++;
+                this.loadLevel(this.level);
+            } else {
+                this.loadWallPassMode();
+            }
+        });
+
+        // Skins Drawer
+        const skinsModal = document.getElementById('skins-modal');
+        document.getElementById('btn-skins').addEventListener('click', () => {
+            skinsModal.classList.toggle('active');
+        });
+
+        document.querySelectorAll('.skin-opt').forEach(opt => {
+            opt.addEventListener('click', (e) => {
+                document.querySelectorAll('.skin-opt').forEach(o => o.classList.remove('active'));
+                const target = e.currentTarget;
+                target.classList.add('active');
+                this.setBallSkin(target.dataset.skin);
+                skinsModal.classList.remove('active');
+            });
+        });
+    }
+
+    toggleGameMode() {
+        if (this.gameMode === 'classic') {
+            this.gameMode = 'wallpass';
+            this.modeNameEl.textContent = '🧱 Wall Pass';
+            this.btnModeToggle.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+            this.showToast('Switched to 🧱 Wall Pass Challenge Mode!');
+            this.loadWallPassMode();
+        } else {
+            this.gameMode = 'classic';
+            this.modeNameEl.textContent = '⛳ Classic';
+            this.btnModeToggle.style.background = 'linear-gradient(135deg, #3b82f6, #1d4ed8)';
+            this.showToast('Switched to ⛳ Classic Mini-Golf Mode!');
+            this.loadLevel(this.level);
+        }
+    }
+
+    setBallSkin(skinName) {
+        this.currentSkin = skinName;
+        if (!this.ballMesh) return;
+
+        if (skinName === 'gold') this.ballMesh.material = this.mats.ballGold;
+        else if (skinName === 'neon') this.ballMesh.material = this.mats.ballNeon;
+        else if (skinName === 'fire') this.ballMesh.material = this.mats.ballFire;
+        else this.ballMesh.material = this.mats.ballWhite;
+
+        this.showToast(`Ball Skin: ${skinName.toUpperCase()} 🎨`);
+    }
+
+    initEvents() {
+        window.addEventListener('resize', () => {
+            this.camera.aspect = window.innerWidth / window.innerHeight;
+            this.camera.updateProjectionMatrix();
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        const getPointer = (e) => {
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: clientX, y: clientY };
+        };
+
+        const onPointerDown = (e) => {
+            if (this.ballState.isMoving || this.ballState.inHole) return;
+            this.sound.init();
+
+            const p = getPointer(e);
+            this.isDragging = true;
+            this.dragStart = { x: p.x, y: p.y };
+            this.dragPower = 0;
+            this.dragHint.style.opacity = '0';
+        };
+
+        const onPointerMove = (e) => {
+            if (!this.isDragging) return;
+            const p = getPointer(e);
+            const dx = p.x - this.dragStart.x;
+            const dy = p.y - this.dragStart.y;
+
+            const dist = Math.hypot(dx, dy);
+            this.dragPower = Math.min(1.0, Math.max(0.0, dist / this.maxDragDistance));
+
+            let targetX = 0, targetZ = 10;
+            if (this.gameMode === 'classic') {
+                targetX = this.holePos.x;
+                targetZ = this.holePos.z;
+            } else {
+                // In wallpass mode, target the next gate's hole
+                const nextGate = this.wallPass.gates.find(g => !g.cleared);
+                if (nextGate) {
+                    targetX = nextGate.holeX;
+                    targetZ = nextGate.z;
+                } else {
+                    targetZ = this.ballState.pos.z + 15;
+                }
+            }
+
+            const defaultYaw = Math.atan2(targetX - this.ballState.pos.x, targetZ - this.ballState.pos.z);
+            const yawOffset = (dx / window.innerWidth) * Math.PI * 1.6;
+            this.aimAngle = defaultYaw + yawOffset;
+
+            this.updateSpeedHUD(this.dragPower);
+            this.updateClubTransform(this.dragPower, this.aimAngle);
+            this.updateAimPredictor(this.dragPower, this.aimAngle);
+        };
+
+        const onPointerUp = () => {
+            if (!this.isDragging) return;
+            this.isDragging = false;
+            this.floatingBadge.style.display = 'none';
+
+            if (this.dragPower > 0.05) {
+                this.executeShot();
+            } else {
+                this.resetStick();
+            }
+        };
+
+        this.container.addEventListener('mousedown', onPointerDown);
+        window.addEventListener('mousemove', onPointerMove);
+        window.addEventListener('mouseup', onPointerUp);
+
+        this.container.addEventListener('touchstart', onPointerDown, { passive: false });
+        window.addEventListener('touchmove', onPointerMove, { passive: false });
+        window.addEventListener('touchend', onPointerUp, { passive: false });
+    }
+
+    showToast(msg) {
+        this.toastEl.textContent = msg;
+        this.toastEl.classList.add('show');
+        clearTimeout(this._toastTimer);
+        this._toastTimer = setTimeout(() => this.toastEl.classList.remove('show'), 2200);
+    }
+
+    updateSpeedHUD(power) {
+        const pct = Math.round(power * 100);
+        this.speedMeterFill.style.width = `${pct}%`;
+        const kmh = Math.round(10 + power * 65);
+        this.speedPercent.textContent = `${pct}% (${kmh} km/h)`;
+
+        this.speedBadge.className = 'speed-badge';
+        let text = 'READY';
+        let badgeClass = 'ready';
+        let floatColor = '#10b981';
+
+        if (power <= 0.02) {
+            text = 'READY';
+            badgeClass = 'ready';
+            this.floatingBadge.style.display = 'none';
+        } else if (power < 0.35) {
+            text = '🟢 LOW POWER';
+            badgeClass = 'low';
+            floatColor = '#10b981';
+            this.floatingBadge.style.display = 'block';
+        } else if (power < 0.72) {
+            text = '🟡 MED POWER';
+            badgeClass = 'med';
+            floatColor = '#f59e0b';
+            this.floatingBadge.style.display = 'block';
+        } else if (power < 0.93) {
+            text = '🔴 HIGH POWER!';
+            badgeClass = 'high';
+            floatColor = '#ef4444';
+            this.floatingBadge.style.display = 'block';
+        } else {
+            text = '💥 MAX POWER!';
+            badgeClass = 'max';
+            floatColor = '#ec4899';
+            this.floatingBadge.style.display = 'block';
+        }
+
+        this.speedBadge.textContent = text;
+        this.speedBadge.classList.add(badgeClass);
+
+        this.floatingBadge.textContent = text;
+        this.floatingBadge.style.background = floatColor;
+        this.floatingBadge.style.color = power < 0.35 ? '#022c22' : '#ffffff';
+
+        if (this.clubGroup) {
+            const worldPos = new THREE.Vector3();
+            this.clubGroup.getWorldPosition(worldPos);
+            worldPos.y += 1.85;
+            worldPos.project(this.camera);
+
+            const screenX = (worldPos.x * 0.5 + 0.5) * window.innerWidth;
+            const screenY = (-(worldPos.y * 0.5) + 0.5) * window.innerHeight;
+
+            this.floatingBadge.style.left = `${screenX}px`;
+            this.floatingBadge.style.top = `${screenY}px`;
+        }
+    }
+
+    resetStick() {
+        this.dragPower = 0;
+        this.updateSpeedHUD(0);
+        this.updateClubTransform(0, this.aimAngle);
+        if (this.aimLine) this.aimLine.visible = false;
+        if (this.aimBounceLine) this.aimBounceLine.visible = false;
+    }
+
+    createGolfClub() {
+        if (this.clubGroup) this.scene.remove(this.clubGroup);
+
+        this.clubGroup = new THREE.Group();
+
+        const headGeo = new THREE.BoxGeometry(0.2, 0.16, 0.5);
+        const headMesh = new THREE.Mesh(headGeo, this.mats.clubHead);
+        headMesh.castShadow = true;
+        headMesh.position.set(0, 0.08, 0);
+        this.clubGroup.add(headMesh);
+
+        const notchGeo = new THREE.BoxGeometry(0.19, 0.02, 0.04);
+        const notchMesh = new THREE.Mesh(notchGeo, new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+        notchMesh.position.set(0, 0.165, 0);
+        this.clubGroup.add(notchMesh);
+
+        const hoselGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.24);
+        const hoselMesh = new THREE.Mesh(hoselGeo, this.mats.clubHead);
+        hoselMesh.position.set(0, 0.23, -0.18);
+        this.clubGroup.add(hoselMesh);
+
+        const shaftGeo = new THREE.CylinderGeometry(0.022, 0.03, 2.5);
+        const shaftMesh = new THREE.Mesh(shaftGeo, this.mats.clubShaft);
+        shaftMesh.position.set(0, 1.45, -0.24);
+        shaftMesh.rotation.z = 0.08;
+        shaftMesh.castShadow = true;
+        this.clubGroup.add(shaftMesh);
+
+        const gripGeo = new THREE.CylinderGeometry(0.034, 0.034, 0.75);
+        const gripMesh = new THREE.Mesh(gripGeo, this.mats.clubGrip);
+        gripMesh.position.set(0.09, 2.35, -0.26);
+        this.clubGroup.add(gripMesh);
+
+        this.scene.add(this.clubGroup);
+
+        this.createAimPredictorLines();
+    }
+
+    createAimPredictorLines() {
+        if (this.aimLine) this.scene.remove(this.aimLine);
+        if (this.aimBounceLine) this.scene.remove(this.aimBounceLine);
+
+        const points = [];
+        for (let i = 0; i <= 25; i++) points.push(new THREE.Vector3());
+        const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+        this.aimLine = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({
+            color: 0x10b981,
+            linewidth: 3
+        }));
+        this.aimLine.visible = false;
+        this.scene.add(this.aimLine);
+
+        const bouncePoints = [];
+        for (let i = 0; i <= 15; i++) bouncePoints.push(new THREE.Vector3());
+        const bounceGeo = new THREE.BufferGeometry().setFromPoints(bouncePoints);
+        this.aimBounceLine = new THREE.Line(bounceGeo, new THREE.LineDashedMaterial({
+            color: 0xfbbf24,
+            dashSize: 0.3,
+            gapSize: 0.2,
+            linewidth: 2
+        }));
+        this.aimBounceLine.visible = false;
+        this.scene.add(this.aimBounceLine);
+    }
+
+    updateClubTransform(power, angle) {
+        if (!this.clubGroup) return;
+
+        const ball = this.ballState.pos;
+        const baseOffset = 0.55;
+        const pullback = power * 1.6;
+        const totalDist = baseOffset + pullback;
+
+        const forwardX = Math.sin(angle);
+        const forwardZ = Math.cos(angle);
+
+        this.clubGroup.position.set(
+            ball.x - forwardX * totalDist,
+            ball.y,
+            ball.z - forwardZ * totalDist
+        );
+
+        this.clubGroup.rotation.y = angle + Math.PI / 2;
+        this.clubGroup.rotation.x = -power * 0.35;
+    }
+
+    updateAimPredictor(power, angle) {
+        if (!this.aimLine || !this.isDragging || power <= 0.05) {
+            if (this.aimLine) this.aimLine.visible = false;
+            if (this.aimBounceLine) this.aimBounceLine.visible = false;
+            return;
+        }
+
+        const ball = this.ballState.pos;
+        const totalDist = power * 18;
+
+        const forwardX = Math.sin(angle);
+        const forwardZ = Math.cos(angle);
+
+        const rayStart = new THREE.Vector3(ball.x, ball.y, ball.z);
+        const rayDir = new THREE.Vector3(forwardX, 0, forwardZ).normalize();
+
+        let hitDist = totalDist;
+        let hitNormal = null;
+
+        for (const box of this.colliders) {
+            const ray = new THREE.Ray(rayStart, rayDir);
+            const target = new THREE.Vector3();
+            if (ray.intersectBox(box, target)) {
+                const d = rayStart.distanceTo(target);
+                if (d < hitDist) {
+                    hitDist = d;
+                    const center = new THREE.Vector3();
+                    box.getCenter(center);
+                    const size = new THREE.Vector3();
+                    box.getSize(size);
+                    const rel = target.clone().sub(center);
+                    if (Math.abs(rel.x) > size.x * 0.48) hitNormal = new THREE.Vector3(Math.sign(rel.x), 0, 0);
+                    else if (Math.abs(rel.z) > size.z * 0.48) hitNormal = new THREE.Vector3(0, 0, Math.sign(rel.z));
+                    else hitNormal = new THREE.Vector3(0, 1, 0);
+                }
+            }
+        }
+
+        const posAttr = this.aimLine.geometry.attributes.position;
+        const count = posAttr.count;
+        for (let i = 0; i < count; i++) {
+            const t = i / (count - 1);
+            posAttr.setXYZ(
+                i,
+                ball.x + forwardX * hitDist * t,
+                ball.y + 0.04,
+                ball.z + forwardZ * hitDist * t
+            );
+        }
+        posAttr.needsUpdate = true;
+        this.aimLine.visible = true;
+
+        const col = power > 0.72 ? 0xef4444 : (power > 0.35 ? 0xf59e0b : 0x10b981);
+        this.aimLine.material.color.setHex(col);
+
+        if (hitNormal && hitDist < totalDist - 1) {
+            const hitPoint = rayStart.clone().addScaledVector(rayDir, hitDist);
+            const remainDist = (totalDist - hitDist) * 0.75;
+            const bounceDir = rayDir.clone().reflect(hitNormal).negate();
+
+            const bPosAttr = this.aimBounceLine.geometry.attributes.position;
+            const bCount = bPosAttr.count;
+            for (let i = 0; i < bCount; i++) {
+                const t = i / (bCount - 1);
+                bPosAttr.setXYZ(
+                    i,
+                    hitPoint.x + bounceDir.x * remainDist * t,
+                    hitPoint.y + 0.04,
+                    hitPoint.z + bounceDir.z * remainDist * t
+                );
+            }
+            bPosAttr.needsUpdate = true;
+            this.aimBounceLine.computeLineDistances();
+            this.aimBounceLine.visible = true;
+        } else {
+            this.aimBounceLine.visible = false;
+        }
+    }
+
+    executeShot() {
+        const power = this.dragPower;
+        const angle = this.aimAngle;
+
+        this.lastShotOrigin.copy(this.ballState.pos);
+
+        const minSpeed = 5.2;
+        const maxSpeed = 29.0;
+        const speed = minSpeed + (maxSpeed - minSpeed) * Math.pow(power, 1.25);
+
+        this.ballState.vel.set(
+            Math.sin(angle) * speed,
+            0,
+            Math.cos(angle) * speed
+        );
+        this.ballState.isMoving = true;
+
+        this.sound.playSwing(power);
+        this.createImpactSparks(this.ballState.pos, angle, power);
+
+        this.clubGroup.visible = false;
+        if (this.aimLine) this.aimLine.visible = false;
+        if (this.aimBounceLine) this.aimBounceLine.visible = false;
+
+        this.resetStick();
+    }
+
+    createImpactSparks(pos, angle, power) {
+        const count = 14 + Math.floor(power * 28);
+        const geo = new THREE.DodecahedronGeometry(0.045);
+        const col = power > 0.72 ? 0xf87171 : (power > 0.35 ? 0xfbbf24 : 0x34d399);
+        const mat = new THREE.MeshBasicMaterial({ color: col });
+
+        for (let i = 0; i < count; i++) {
+            const spark = new THREE.Mesh(geo, mat);
+            spark.position.copy(pos);
+            const spread = angle + (Math.random() - 0.5) * 1.6;
+            const spd = 2 + Math.random() * 7 * power;
+            this.scene.add(spark);
+            this.sparkParticles.push({
+                mesh: spark,
+                vel: new THREE.Vector3(Math.sin(spread) * spd, 1 + Math.random() * 4, Math.cos(spread) * spd),
+                life: 1.0,
+                decay: 0.038 + Math.random() * 0.04
+            });
+        }
+    }
+
+    create3DConfetti(originX, originZ) {
+        const colors = [0xf43f5e, 0xec4899, 0x8b5cf6, 0x3b82f6, 0x10b981, 0xf59e0b];
+        const geo = new THREE.PlaneGeometry(0.2, 0.2);
+
+        for (let i = 0; i < 100; i++) {
+            const mat = new THREE.MeshBasicMaterial({
+                color: colors[Math.floor(Math.random() * colors.length)],
+                side: THREE.DoubleSide
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(
+                (originX !== undefined ? originX : this.holePos.x) + (Math.random() - 0.5) * 2,
+                0.5,
+                (originZ !== undefined ? originZ : this.holePos.z) + (Math.random() - 0.5) * 2
+            );
+            this.scene.add(mesh);
+
+            this.confettiParticles.push({
+                mesh,
+                vel: new THREE.Vector3(
+                    (Math.random() - 0.5) * 7,
+                    6 + Math.random() * 9,
+                    (Math.random() - 0.5) * 7
+                ),
+                rotVel: new THREE.Vector3(
+                    Math.random() * 0.2,
+                    Math.random() * 0.2,
+                    Math.random() * 0.2
+                ),
+                life: 1.0,
+                decay: 0.009 + Math.random() * 0.009
+            });
+        }
+    }
+
+    createBall() {
+        if (this.ballMesh) this.scene.remove(this.ballMesh);
+
+        const geo = new THREE.SphereGeometry(this.ballRadius, 32, 32);
+        this.ballMesh = new THREE.Mesh(geo, this.mats.ballWhite);
+        this.ballMesh.castShadow = true;
+        this.scene.add(this.ballMesh);
+        this.setBallSkin(this.currentSkin);
+        this.updateBallMesh();
+    }
+
+    updateBallMesh() {
+        if (!this.ballMesh) return;
+        this.ballMesh.position.copy(this.ballState.pos);
+    }
+
+    /**
+     * MODE 1: CLASSIC PROCEDURAL MINI-GOLF
+     */
+    loadLevel(levelNum) {
+        this.level = levelNum;
+        this.strokes = 1;
+        this.ballState.inHole = false;
+        this.ballState.isMoving = false;
+        this.ballState.vel.set(0, 0, 0);
+        this.ballState.sinkAnim = 0;
+
+        if (this.courseGroup) this.scene.remove(this.courseGroup);
+        this.courseGroup = new THREE.Group();
+        this.scene.add(this.courseGroup);
+
+        this.courseBlocks = [];
+        this.colliders = [];
+        this.sandPits = [];
+        this.waterHazards = [];
+        this.bumpers = [];
+        this.spinners = [];
+
+        this.generate3DClassicCourse(levelNum);
+        this.createBall();
+        this.createGolfClub();
+
+        this.aimAngle = Math.atan2(this.holePos.x - this.ballState.pos.x, this.holePos.z - this.ballState.pos.z);
+        this.updateClubTransform(0, this.aimAngle);
+        this.clubGroup.visible = true;
+
+        this.labelStat1.textContent = 'Hole';
+        this.hudStat1.textContent = this.level;
+        this.labelStat2.textContent = 'Stroke';
+        this.hudStat2.textContent = this.strokes;
+        this.labelStat3.textContent = 'Par';
+        this.hudStat3.textContent = `Par ${this.par}`;
+
+        this.windSpeed = (1 + Math.random() * 6).toFixed(1);
+        this.windText.textContent = `Wind: ${this.windSpeed} km/h ↗`;
+
+        this.showToast(`⛳ Hole ${this.level} - Par ${this.par}`);
+        this.dragHint.style.opacity = '1';
+        this.renderMiniMap();
+    }
+
+    generate3DClassicCourse(level) {
+        const layoutType = (level - 1) % 6;
+
+        if (layoutType === 0) {
+            this.par = 2;
+            const w = 5.2;
+            const l = 21;
+            this.createFairwayBlock(0, 0, 0, w, l);
+            this.ballState.pos.set(0, this.ballRadius, -l / 2 + 3);
+            this.holePos.set(0, 0, l / 2 - 3);
+        }
+        else if (layoutType === 1) {
+            this.par = 3;
+            const w = 5.2;
+            const l1 = 16;
+            const l2 = 14;
+            this.createFairwayBlock(0, 0, -l1 / 4, w, l1);
+            this.createFairwayBlock(l2 / 2 - w / 2, 0, l1 / 4, l2, w);
+            this.ballState.pos.set(0, this.ballRadius, -l1 / 2 + 1);
+            this.holePos.set(l2 - w / 2 - 2, 0, l1 / 4);
+            this.createBumper(w / 2 + 1, 0, l1 / 4 + 1, 0.75);
+        }
+        else if (layoutType === 2) {
+            this.par = 3;
+            const w = 6.8;
+            const l = 25;
+            this.createFairwayBlock(0, 0, 0, w, l);
+            this.ballState.pos.set(0, this.ballRadius, -l / 2 + 3);
+            this.holePos.set(0, 0, l / 2 - 3);
+            this.createSandTrap(-1.6, 0, -2, 1.9, 2.6);
+            this.createSandTrap(1.6, 0, 3.5, 1.9, 2.6);
+        }
+        else if (layoutType === 3) {
+            this.par = 4;
+            const w = 7.8;
+            const l = 25;
+            this.createFairwayBlock(0, 0, 0, w, l);
+            this.ballState.pos.set(0, this.ballRadius, -l / 2 + 3);
+            this.holePos.set(0, 0, l / 2 - 3);
+            this.createBumper(-2.0, 0, -1, 0.8);
+            this.createBumper(2.0, 0, -1, 0.8);
+            this.createBumper(0, 0, 3.2, 0.9);
+        }
+        else if (layoutType === 4) {
+            this.par = 4;
+            const w = 7.2;
+            this.createFairwayBlock(0, 0, -8.5, w, 9);
+            this.createFairwayBlock(0, 0, 0, 2.6, 8);
+            this.createFairwayBlock(0, 0, 8.5, w, 9);
+            this.createWaterHazard(-10, -0.2, -15, 20, 30);
+            this.ballState.pos.set(0, this.ballRadius, -11.5);
+            this.holePos.set(0, 0, 10.5);
+            this.createWindmill(0, 0, 0);
+        }
+        else {
+            this.par = 4;
+            const w = 5.2;
+            this.createFairwayBlock(-4.5, 0, -8, w, 10);
+            this.createFairwayBlock(0, 0, -3, 14, w);
+            this.createFairwayBlock(4.5, 0, 4, w, 10);
+            this.ballState.pos.set(-4.5, this.ballRadius, -11.5);
+            this.holePos.set(4.5, 0, 7.5);
+            this.createBumper(3.8, 0, -3, 0.75);
+            this.createBumper(-3.8, 0, 1.5, 0.75);
+        }
+
+        this.lastShotOrigin.copy(this.ballState.pos);
+        this.createHole(this.holePos.x, this.holePos.y, this.holePos.z);
+    }
+
+    /**
+     * MODE 2: WALL PASS / GATE RUNNER CHALLENGE
+     * - Walls with a single hole/passage
+     * - Ball must pass through the hole
+     * - New walls generate further ahead upon passing!
+     */
+    loadWallPassMode() {
+        this.strokes = 1;
+        this.wallPass.score = 0;
+        this.wallPass.currentGateIndex = 0;
+        this.wallPass.gates = [];
+        this.wallPass.nextGateZ = 12;
+        this.wallPass.runwayEndZ = 45;
+
+        this.ballState.inHole = false;
+        this.ballState.isMoving = false;
+        this.ballState.vel.set(0, 0, 0);
+        this.ballState.sinkAnim = 0;
+
+        if (this.courseGroup) this.scene.remove(this.courseGroup);
+        this.courseGroup = new THREE.Group();
+        this.scene.add(this.courseGroup);
+
+        this.courseBlocks = [];
+        this.colliders = [];
+        this.sandPits = [];
+        this.waterHazards = [];
+        this.bumpers = [];
+        this.spinners = [];
+
+        // Build continuous straight runway
+        this.runwayWidth = 6.4;
+        this.createRunwayChunk(0, 0, 0, this.runwayWidth, 50);
+
+        // Starting Ball Position
+        this.ballState.pos.set(0, this.ballRadius, -12);
+        this.lastShotOrigin.copy(this.ballState.pos);
+
+        // Spawn first 3 gates ahead
+        this.spawnWallGate(12, 1.9);
+        this.spawnWallGate(26, 1.7);
+        this.spawnWallGate(40, 1.5);
+
+        this.createBall();
+        this.createGolfClub();
+
+        const firstGate = this.wallPass.gates[0];
+        this.aimAngle = Math.atan2(firstGate.holeX - this.ballState.pos.x, firstGate.z - this.ballState.pos.z);
+        this.updateClubTransform(0, this.aimAngle);
+        this.clubGroup.visible = true;
+
+        this.labelStat1.textContent = 'Gates';
+        this.hudStat1.textContent = this.wallPass.score;
+        this.labelStat2.textContent = 'Shot';
+        this.hudStat2.textContent = this.strokes;
+        this.labelStat3.textContent = 'Best';
+        this.hudStat3.textContent = this.wallPass.bestScore;
+
+        this.showToast('🧱 Wall Pass: Aim for the single opening in the wall!');
+        this.dragHint.style.opacity = '1';
+        this.renderMiniMap();
+    }
+
+    createRunwayChunk(x, y, z, width, length) {
+        this.courseBlocks.push({ x, z, w: width, l: length });
+
+        const floorGeo = new THREE.BoxGeometry(width, 0.4, length);
+        const floor = new THREE.Mesh(floorGeo, this.mats.green);
+        floor.position.set(x, y - 0.2, z);
+        floor.receiveShadow = true;
+        this.courseGroup.add(floor);
+
+        const railHeight = 0.6;
+        const railThick = 0.4;
+
+        // Left continuous rail
+        this.addWall(x - width / 2 - railThick / 2, y + railHeight / 2 - 0.2, z, railThick, railHeight, length);
+        // Right continuous rail
+        this.addWall(x + width / 2 + railThick / 2, y + railHeight / 2 - 0.2, z, railThick, railHeight, length);
+    }
+
+    spawnWallGate(z, holeWidth) {
+        const rng = new PRNG(z * 133 + 7);
+        const trackW = this.runwayWidth;
+
+        // Random X position for the single hole/gate opening
+        const maxHoleX = (trackW / 2) - (holeWidth / 2) - 0.4;
+        const holeX = rng.range(-maxHoleX, maxHoleX);
+
+        const gateGroup = new THREE.Group();
+        gateGroup.position.set(0, 0, z);
+
+        const wallHeight = 1.6;
+        const wallThick = 0.45;
+
+        // 1. Left Barrier Wall Block
+        const leftW = (trackW / 2) + holeX - (holeWidth / 2);
+        if (leftW > 0.05) {
+            const leftGeo = new THREE.BoxGeometry(leftW, wallHeight, wallThick);
+            const leftMesh = new THREE.Mesh(leftGeo, this.mats.gateWall);
+            leftMesh.position.set(-trackW / 2 + leftW / 2, wallHeight / 2, 0);
+            leftMesh.castShadow = true;
+            leftMesh.receiveShadow = true;
+            gateGroup.add(leftMesh);
+
+            const leftCap = new THREE.Mesh(new THREE.BoxGeometry(leftW, 0.08, wallThick * 1.1), this.mats.wallCap);
+            leftCap.position.set(-trackW / 2 + leftW / 2, wallHeight + 0.04, 0);
+            gateGroup.add(leftCap);
+
+            this.colliders.push(new THREE.Box3().setFromCenterAndSize(
+                new THREE.Vector3(-trackW / 2 + leftW / 2, wallHeight / 2, z),
+                new THREE.Vector3(leftW, wallHeight, wallThick)
+            ));
+        }
+
+        // 2. Right Barrier Wall Block
+        const rightW = (trackW / 2) - holeX - (holeWidth / 2);
+        if (rightW > 0.05) {
+            const rightGeo = new THREE.BoxGeometry(rightW, wallHeight, wallThick);
+            const rightMesh = new THREE.Mesh(rightGeo, this.mats.gateWall);
+            rightMesh.position.set(trackW / 2 - rightW / 2, wallHeight / 2, 0);
+            rightMesh.castShadow = true;
+            rightMesh.receiveShadow = true;
+            gateGroup.add(rightMesh);
+
+            const rightCap = new THREE.Mesh(new THREE.BoxGeometry(rightW, 0.08, wallThick * 1.1), this.mats.wallCap);
+            rightCap.position.set(trackW / 2 - rightW / 2, wallHeight + 0.04, 0);
+            gateGroup.add(rightCap);
+
+            this.colliders.push(new THREE.Box3().setFromCenterAndSize(
+                new THREE.Vector3(trackW / 2 - rightW / 2, wallHeight / 2, z),
+                new THREE.Vector3(rightW, wallHeight, wallThick)
+            ));
+        }
+
+        // 3. Top Overhead Lintel Arch (Connecting over the hole)
+        const archGeo = new THREE.BoxGeometry(holeWidth + 0.2, 0.35, wallThick * 1.05);
+        const archMesh = new THREE.Mesh(archGeo, this.mats.wallCap);
+        archMesh.position.set(holeX, wallHeight - 0.175, 0);
+        archMesh.castShadow = true;
+        gateGroup.add(archMesh);
+
+        // 4. Glowing Neon Target Posts (Marking the single pass-through hole)
+        const postGeo = new THREE.CylinderGeometry(0.08, 0.08, wallHeight, 16);
+        const postLeft = new THREE.Mesh(postGeo, this.mats.gateHoleNeon);
+        postLeft.position.set(holeX - holeWidth / 2, wallHeight / 2, 0);
+        gateGroup.add(postLeft);
+
+        const postRight = new THREE.Mesh(postGeo, this.mats.gateHoleNeon);
+        postRight.position.set(holeX + holeWidth / 2, wallHeight / 2, 0);
+        gateGroup.add(postRight);
+
+        this.courseGroup.add(gateGroup);
+
+        this.wallPass.gates.push({
+            group: gateGroup,
+            z: z,
+            holeX: holeX,
+            holeWidth: holeWidth,
+            cleared: false,
+            leftPost: postLeft,
+            rightPost: postRight
+        });
+    }
+
+    createFairwayBlock(x, y, z, width, length) {
+        this.courseBlocks.push({ x, z, w: width, l: length });
+
+        const floorGeo = new THREE.BoxGeometry(width, 0.4, length);
+        const floor = new THREE.Mesh(floorGeo, this.mats.green);
+        floor.position.set(x, y - 0.2, z);
+        floor.receiveShadow = true;
+        this.courseGroup.add(floor);
+
+        const railHeight = 0.58;
+        const railThick = 0.38;
+
+        this.addWall(x - width / 2 - railThick / 2, y + railHeight / 2 - 0.2, z, railThick, railHeight, length + railThick * 2);
+        this.addWall(x + width / 2 + railThick / 2, y + railHeight / 2 - 0.2, z, railThick, railHeight, length + railThick * 2);
+        this.addWall(x, y + railHeight / 2 - 0.2, z + length / 2 + railThick / 2, width, railHeight, railThick);
+        this.addWall(x, y + railHeight / 2 - 0.2, z - length / 2 - railThick / 2, width, railHeight, railThick);
+    }
+
+    addWall(x, y, z, w, h, d) {
+        const wallGeo = new THREE.BoxGeometry(w, h, d);
+        const wall = new THREE.Mesh(wallGeo, this.mats.woodWall);
+        wall.position.set(x, y, z);
+        wall.castShadow = true;
+        wall.receiveShadow = true;
+        this.courseGroup.add(wall);
+
+        const capGeo = new THREE.BoxGeometry(w * 1.05, 0.08, d * 1.05);
+        const cap = new THREE.Mesh(capGeo, this.mats.wallCap);
+        cap.position.set(x, y + h / 2 + 0.04, z);
+        this.courseGroup.add(cap);
+
+        const box = new THREE.Box3().setFromObject(wall);
+        this.colliders.push(box);
+    }
+
+    createSandTrap(x, y, z, rx, rz) {
+        const geo = new THREE.CylinderGeometry(rx, rx * 0.9, 0.25, 24);
+        const mesh = new THREE.Mesh(geo, this.mats.sand);
+        mesh.scale.set(1, 1, rz / rx);
+        mesh.position.set(x, y - 0.08, z);
+        mesh.receiveShadow = true;
+        this.courseGroup.add(mesh);
+
+        this.sandPits.push({ x, z, rx, rz });
+    }
+
+    createWaterHazard(x, y, z, w, d) {
+        const geo = new THREE.BoxGeometry(w, 0.4, d);
+        const mesh = new THREE.Mesh(geo, this.mats.water);
+        mesh.position.set(x + w / 2, y, z + d / 2);
+        this.courseGroup.add(mesh);
+
+        const box = new THREE.Box3().setFromCenterAndSize(
+            new THREE.Vector3(x + w / 2, y, z + d / 2),
+            new THREE.Vector3(w, 1.0, d)
+        );
+        this.waterHazards.push({ box, mesh });
+    }
+
+    createBumper(x, y, z, radius) {
+        const geo = new THREE.CylinderGeometry(radius, radius * 1.1, 0.75, 24);
+        const mesh = new THREE.Mesh(geo, this.mats.bumper);
+        mesh.position.set(x, y + 0.38, z);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        this.courseGroup.add(mesh);
+
+        const ringGeo = new THREE.TorusGeometry(radius * 0.75, 0.08, 16, 24);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0xf472b6 });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.rotation.x = Math.PI / 2;
+        ring.position.set(x, y + 0.75, z);
+        this.courseGroup.add(ring);
+
+        this.bumpers.push({ pos: new THREE.Vector3(x, y, z), radius, mesh, ring });
+    }
+
+    createWindmill(x, y, z) {
+        const towerGeo = new THREE.CylinderGeometry(0.85, 1.45, 4.8, 8);
+        const towerMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.7 });
+        const tower = new THREE.Mesh(towerGeo, towerMat);
+        tower.position.set(x + 2.6, y + 2.4, z);
+        tower.castShadow = true;
+        this.courseGroup.add(tower);
+
+        const bladesGroup = new THREE.Group();
+        bladesGroup.position.set(x, y + 2.2, z);
+
+        const bladeGeo = new THREE.BoxGeometry(0.25, 3.5, 0.06);
+        const bladeMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.5 });
+
+        for (let i = 0; i < 4; i++) {
+            const blade = new THREE.Mesh(bladeGeo, bladeMat);
+            blade.position.y = 1.75;
+            const pivot = new THREE.Group();
+            pivot.rotation.z = (i * Math.PI) / 2;
+            pivot.add(blade);
+            bladesGroup.add(pivot);
+        }
+
+        this.courseGroup.add(bladesGroup);
+        this.spinners.push({ mesh: bladesGroup, speed: 0.028 });
+    }
+
+    createHole(x, y, z) {
+        const cupGeo = new THREE.CylinderGeometry(this.holeRadius, this.holeRadius, 0.8, 32);
+        const cupMat = new THREE.MeshBasicMaterial({ color: 0x020617 });
+        const cup = new THREE.Mesh(cupGeo, cupMat);
+        cup.position.set(x, y - 0.4, z);
+        this.courseGroup.add(cup);
+
+        const rimGeo = new THREE.TorusGeometry(this.holeRadius, 0.045, 16, 32);
+        const rim = new THREE.Mesh(rimGeo, this.mats.cupRim);
+        rim.rotation.x = Math.PI / 2;
+        rim.position.set(x, y + 0.01, z);
+        this.courseGroup.add(rim);
+
+        const poleGeo = new THREE.CylinderGeometry(0.04, 0.04, 4.0);
+        const poleMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.8, roughness: 0.2 });
+        const pole = new THREE.Mesh(poleGeo, poleMat);
+        pole.position.set(x, y + 2.0, z);
+        pole.castShadow = true;
+        this.courseGroup.add(pole);
+
+        const finial = new THREE.Mesh(new THREE.SphereGeometry(0.09), new THREE.MeshBasicMaterial({ color: 0xf59e0b }));
+        finial.position.set(x, y + 4.05, z);
+        this.courseGroup.add(finial);
+
+        const flagGeo = new THREE.PlaneGeometry(1.3, 0.8, 8, 4);
+        const flagMat = new THREE.MeshLambertMaterial({ color: 0xef4444, side: THREE.DoubleSide });
+        this.flagMesh = new THREE.Mesh(flagGeo, flagMat);
+        this.flagMesh.position.set(x + 0.65, y + 3.45, z);
+        this.courseGroup.add(this.flagMesh);
+    }
+
+    renderMiniMap() {
+        const ctx = this.minimapCtx;
+        const w = 88;
+        const h = 110;
+        ctx.clearRect(0, 0, w, h);
+
+        let minX = -10, maxX = 10, minZ = -15, maxZ = 15;
+        this.courseBlocks.forEach(b => {
+            minX = Math.min(minX, b.x - b.w / 2);
+            maxX = Math.max(maxX, b.x + b.w / 2);
+            minZ = Math.min(minZ, b.z - b.l / 2);
+            maxZ = Math.max(maxZ, b.z + b.l / 2);
+        });
+
+        if (this.gameMode === 'wallpass') {
+            minX = -5; maxX = 5;
+            minZ = this.ballState.pos.z - 10;
+            maxZ = this.ballState.pos.z + 35;
+        }
+
+        const mapX = (x) => ((x - minX) / (maxX - minX)) * (w - 16) + 8;
+        const mapZ = (z) => ((z - minZ) / (maxZ - minZ)) * (h - 16) + 8;
+
+        ctx.fillStyle = '#16a34a';
+        this.courseBlocks.forEach(b => {
+            const bx = mapX(b.x - b.w / 2);
+            const bz = mapZ(b.z - b.l / 2);
+            const bw = mapX(b.x + b.w / 2) - bx;
+            const bh = mapZ(b.z + b.l / 2) - bz;
+            ctx.fillRect(bx, bz, bw, bh);
+        });
+
+        if (this.gameMode === 'classic') {
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.arc(mapX(this.holePos.x), mapZ(this.holePos.z), 3.5, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            // Draw walls & holes on minimap
+            this.wallPass.gates.forEach(g => {
+                ctx.fillStyle = g.cleared ? '#10b981' : '#f59e0b';
+                ctx.fillRect(mapX(-3), mapZ(g.z), w - 16, 2.5);
+                // Hole opening
+                ctx.fillStyle = '#16a34a';
+                ctx.fillRect(mapX(g.holeX - g.holeWidth / 2), mapZ(g.z), mapX(g.holeX + g.holeWidth / 2) - mapX(g.holeX - g.holeWidth / 2), 2.5);
+            });
+        }
+
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#34d399';
+        ctx.shadowBlur = 4;
+        ctx.beginPath();
+        ctx.arc(mapX(this.ballState.pos.x), mapZ(this.ballState.pos.z), 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowColor = 'transparent';
+    }
+
+    /**
+     * FIXED-TIMESTEP PHYSICS
+     */
+    updatePhysics(dt) {
+        this.clouds.forEach(c => {
+            c.position.x += 0.02;
+            if (c.position.x > 50) c.position.x = -50;
+        });
+
+        this.spinners.forEach(s => {
+            s.mesh.rotation.z += s.speed;
+        });
+
+        if (this.flagMesh) {
+            const time = performance.now() * 0.006;
+            const posAttr = this.flagMesh.geometry.attributes.position;
+            for (let i = 0; i < posAttr.count; i++) {
+                const vx = posAttr.getX(i);
+                posAttr.setZ(i, Math.sin(time + vx * 3.5) * 0.14 * (vx + 0.65));
+            }
+            posAttr.needsUpdate = true;
+        }
+
+        for (let i = this.confettiParticles.length - 1; i >= 0; i--) {
+            const c = this.confettiParticles[i];
+            c.mesh.position.addScaledVector(c.vel, dt);
+            c.vel.y -= 9.8 * dt;
+            c.mesh.rotation.x += c.rotVel.x;
+            c.mesh.rotation.y += c.rotVel.y;
+            c.life -= c.decay;
+            if (c.life <= 0) {
+                this.scene.remove(c.mesh);
+                this.confettiParticles.splice(i, 1);
+            }
+        }
+
+        for (let i = this.sparkParticles.length - 1; i >= 0; i--) {
+            const s = this.sparkParticles[i];
+            s.mesh.position.addScaledVector(s.vel, dt);
+            s.vel.y -= 9.8 * dt;
+            s.life -= s.decay;
+            s.mesh.scale.setScalar(s.life);
+            if (s.life <= 0) {
+                this.scene.remove(s.mesh);
+                this.sparkParticles.splice(i, 1);
+            }
+        }
+
+        if (this.ballState.inHole) {
+            this.ballState.sinkAnim += dt * 3.8;
+            this.ballState.pos.y = Math.max(-0.4, 0.28 - this.ballState.sinkAnim * 0.55);
+            this.ballState.pos.x = THREE.MathUtils.lerp(this.ballState.pos.x, this.holePos.x, 0.22);
+            this.ballState.pos.z = THREE.MathUtils.lerp(this.ballState.pos.z, this.holePos.z, 0.22);
+            this.updateBallMesh();
+            return;
+        }
+
+        if (!this.ballState.isMoving) return;
+
+        const subSteps = 6;
+        const subDt = dt / subSteps;
+
+        for (let step = 0; step < subSteps; step++) {
+            const speed = Math.hypot(this.ballState.vel.x, this.ballState.vel.z);
+            if (speed < 0.06) {
+                this.ballState.vel.set(0, 0, 0);
+                this.onBallStop();
+                break;
+            }
+
+            let friction = 0.985;
+            for (const sand of this.sandPits) {
+                const dx = (this.ballState.pos.x - sand.x) / sand.rx;
+                const dz = (this.ballState.pos.z - sand.z) / sand.rz;
+                if (dx * dx + dz * dz <= 1.0) {
+                    friction = 0.88;
+                    break;
+                }
+            }
+
+            for (const water of this.waterHazards) {
+                if (water.box.containsPoint(this.ballState.pos)) {
+                    this.onWaterHazard();
+                    return;
+                }
+            }
+
+            this.ballState.vel.x *= Math.pow(friction, subDt * 60);
+            this.ballState.vel.z *= Math.pow(friction, subDt * 60);
+
+            const prevZ = this.ballState.pos.z;
+            this.ballState.pos.x += this.ballState.vel.x * subDt;
+            this.ballState.pos.z += this.ballState.vel.z * subDt;
+
+            if (speed > 0.01) {
+                const rollAxis = new THREE.Vector3(-this.ballState.vel.z, 0, this.ballState.vel.x).normalize();
+                const rollAngle = (speed * subDt) / this.ballRadius;
+                this.ballMesh.rotateOnWorldAxis(rollAxis, rollAngle);
+            }
+
+            // Check Wall Pass Gate Cleared logic
+            if (this.gameMode === 'wallpass') {
+                this.checkWallPassGates(prevZ, this.ballState.pos.z);
+            }
+
+            this.checkWallCollisions();
+            this.checkBumperCollisions();
+
+            if (this.gameMode === 'classic') {
+                const distToHole = Math.hypot(
+                    this.ballState.pos.x - this.holePos.x,
+                    this.ballState.pos.z - this.holePos.z
+                );
+
+                if (distToHole < this.holeRadius * 1.5) {
+                    const pullAngle = Math.atan2(this.holePos.x - this.ballState.pos.x, this.holePos.z - this.ballState.pos.z);
+                    const pullForce = 0.5 * (1 - distToHole / (this.holeRadius * 1.5));
+                    this.ballState.vel.x += Math.sin(pullAngle) * pullForce;
+                    this.ballState.vel.z += Math.cos(pullAngle) * pullForce;
+
+                    if (distToHole < this.holeRadius * 0.75) {
+                        const currentSpeed = Math.hypot(this.ballState.vel.x, this.ballState.vel.z);
+                        if (currentSpeed < 14.0) {
+                            this.onHoleSuccess();
+                            return;
+                        } else {
+                            this.ballState.vel.x *= 0.65;
+                            this.ballState.vel.z *= 0.65;
+                            this.sound.playBounce();
+                        }
+                    }
+                }
+            }
+        }
+
+        this.updateBallMesh();
+        this.renderMiniMap();
+    }
+
+    /**
+     * WALL PASS LOGIC:
+     * When ball passes through the gate hole, score increases and new walls spawn ahead!
+     */
+    checkWallPassGates(prevZ, currZ) {
+        for (const gate of this.wallPass.gates) {
+            if (!gate.cleared && prevZ <= gate.z && currZ >= gate.z) {
+                // Check if ball X was inside the gate hole opening!
+                const distFromHoleCenter = Math.abs(this.ballState.pos.x - gate.holeX);
+                const halfOpening = (gate.holeWidth / 2) - 0.1;
+
+                if (distFromHoleCenter <= halfOpening) {
+                    // PASSED CLEANLY THROUGH THE HOLE!
+                    gate.cleared = true;
+                    this.wallPass.score++;
+                    this.hudStat1.textContent = this.wallPass.score;
+
+                    if (this.wallPass.score > this.wallPass.bestScore) {
+                        this.wallPass.bestScore = this.wallPass.score;
+                        this.hudStat3.textContent = this.wallPass.bestScore;
+                    }
+
+                    // Turn Gate Neon Posts Green & Flash
+                    gate.leftPost.material = new THREE.MeshBasicMaterial({ color: 0x34d399 });
+                    gate.rightPost.material = new THREE.MeshBasicMaterial({ color: 0x34d399 });
+
+                    this.sound.playGatePass();
+                    this.create3DConfetti(gate.holeX, gate.z);
+                    this.showToast(`🎯 WALL CLEARED! Passed: ${this.wallPass.score}`);
+
+                    // Dynamically generate the next wall further ahead!
+                    const lastGate = this.wallPass.gates[this.wallPass.gates.length - 1];
+                    const nextZ = lastGate.z + (14 + Math.random() * 6);
+                    const nextWidth = Math.max(1.3, 1.8 - this.wallPass.score * 0.05);
+
+                    // Extend runway if needed
+                    if (nextZ + 20 > this.wallPass.runwayEndZ) {
+                        this.createRunwayChunk(0, 0, this.wallPass.runwayEndZ + 25, this.runwayWidth, 50);
+                        this.wallPass.runwayEndZ += 50;
+                    }
+
+                    this.spawnWallGate(nextZ, nextWidth);
+                }
+            }
+        }
+    }
+
+    checkWallCollisions() {
+        const ballSphere = new THREE.Sphere(this.ballState.pos, this.ballRadius);
+
+        for (const box of this.colliders) {
+            if (box.intersectsSphere(ballSphere)) {
+                const closestPoint = new THREE.Vector3();
+                box.clampPoint(this.ballState.pos, closestPoint);
+
+                const normal = new THREE.Vector3().subVectors(this.ballState.pos, closestPoint);
+                const dist = normal.length();
+
+                if (dist < 0.001) normal.set(0, 0, 1);
+                else normal.normalize();
+
+                const penetration = this.ballRadius - dist;
+                this.ballState.pos.addScaledVector(normal, penetration + 0.005);
+
+                const dot = this.ballState.vel.dot(normal);
+                if (dot < 0) {
+                    const restitution = 0.76;
+                    this.ballState.vel.sub(normal.clone().multiplyScalar((1 + restitution) * dot));
+                    this.sound.playBounce();
+                }
+            }
+        }
+    }
+
+    checkBumperCollisions() {
+        for (const b of this.bumpers) {
+            const dist = Math.hypot(this.ballState.pos.x - b.pos.x, this.ballState.pos.z - b.pos.z);
+            const minDist = this.ballRadius + b.radius;
+
+            if (dist < minDist) {
+                const angle = Math.atan2(this.ballState.pos.x - b.pos.x, this.ballState.pos.z - b.pos.z);
+                this.ballState.pos.x = b.pos.x + Math.sin(angle) * (minDist + 0.05);
+                this.ballState.pos.z = b.pos.z + Math.cos(angle) * (minDist + 0.05);
+
+                const currentSpeed = Math.max(12.0, Math.hypot(this.ballState.vel.x, this.ballState.vel.z) * 1.25);
+                this.ballState.vel.set(Math.sin(angle) * currentSpeed, 0, Math.cos(angle) * currentSpeed);
+
+                this.sound.playBumper();
+                this.createImpactSparks(this.ballState.pos, angle, 0.85);
+
+                b.mesh.scale.set(1.3, 1.3, 1.3);
+                setTimeout(() => b.mesh.scale.set(1, 1, 1), 180);
+            }
+        }
+    }
+
+    onBallStop() {
+        this.ballState.isMoving = false;
+        this.strokes++;
+        this.hudStat2.textContent = this.strokes;
+
+        // Position club behind ball pointing towards next target
+        let targetX = 0, targetZ = this.ballState.pos.z + 14;
+        if (this.gameMode === 'classic') {
+            targetX = this.holePos.x;
+            targetZ = this.holePos.z;
+        } else {
+            const nextGate = this.wallPass.gates.find(g => !g.cleared);
+            if (nextGate) {
+                targetX = nextGate.holeX;
+                targetZ = nextGate.z;
+            }
+        }
+
+        this.aimAngle = Math.atan2(targetX - this.ballState.pos.x, targetZ - this.ballState.pos.z);
+        this.updateClubTransform(0, this.aimAngle);
+        this.clubGroup.visible = true;
+
+        if (this.gameMode === 'classic') {
+            const dist = Math.round(Math.hypot(this.ballState.pos.x - this.holePos.x, this.ballState.pos.z - this.holePos.z) * 1.5);
+            this.showToast(`Ball Stopped! 🎯 Dist: ${dist}m - Drag to Putt Again!`);
+        } else {
+            const nextGate = this.wallPass.gates.find(g => !g.cleared);
+            const dist = nextGate ? Math.round(Math.abs(nextGate.z - this.ballState.pos.z)) : 10;
+            this.showToast(`Ball Stopped! 🧱 Gate is ${dist}m ahead - Drag to shoot through hole!`);
+        }
+
+        this.renderMiniMap();
+    }
+
+    onWaterHazard() {
+        this.sound.playWater();
+        this.strokes++;
+        this.hudStat2.textContent = this.strokes;
+        this.showToast('💦 Water Hazard! +1 Penalty Stroke');
+
+        setTimeout(() => {
+            this.ballState.pos.copy(this.lastShotOrigin);
+            this.ballState.vel.set(0, 0, 0);
+            this.ballState.isMoving = false;
+            this.updateBallMesh();
+            this.clubGroup.visible = true;
+            this.aimAngle = Math.atan2(this.holePos.x - this.ballState.pos.x, this.holePos.z - this.ballState.pos.z);
+            this.updateClubTransform(0, this.aimAngle);
+            this.renderMiniMap();
+        }, 600);
+    }
+
+    onHoleSuccess() {
+        this.ballState.inHole = true;
+        this.ballState.isMoving = false;
+        this.ballState.vel.set(0, 0, 0);
+
+        this.sound.playHoleDrop();
+        this.create3DConfetti();
+
+        this.totalStrokes += this.strokes;
+        this.totalPar += this.par;
+
+        setTimeout(() => {
+            this.sound.playFanfare();
+            this.showVictoryModal();
+        }, 700);
+    }
+
+    showVictoryModal() {
+        const diff = this.strokes - this.par;
+        let title = 'PAR!';
+        let subtitle = 'Solid 3D golf putting!';
+        let emoji = '⛳';
+
+        if (this.strokes === 1) {
+            title = '🌟 HOLE IN ONE! 🌟';
+            subtitle = 'Legendary shot! Absolute 3D perfection!';
+            emoji = '👑';
+        } else if (diff <= -2) {
+            title = '🦅 EAGLE!';
+            subtitle = 'Remarkable precision and 3D skill!';
+            emoji = '🦅';
+        } else if (diff === -1) {
+            title = '🐦 BIRDIE!';
+            subtitle = 'One under par! Brilliant putt!';
+            emoji = '🐦';
+        } else if (diff === 0) {
+            title = '⛳ PAR!';
+            subtitle = 'Right on target with par!';
+            emoji = '⛳';
+        } else {
+            title = 'HOLE FINISHED!';
+            subtitle = 'Good putting, on to the next hole!';
+            emoji = '🏌️';
+        }
+
+        document.getElementById('victory-emoji').textContent = emoji;
+        document.getElementById('victory-title').textContent = title;
+        document.getElementById('victory-subtitle').textContent = subtitle;
+        document.getElementById('victory-card-val1').textContent = this.strokes;
+        document.getElementById('victory-card-val2').textContent = this.par;
+        document.getElementById('victory-card-val3').textContent = this.level;
+
+        const totalDiff = this.totalStrokes - this.totalPar;
+        document.getElementById('victory-card-val4').textContent =
+            totalDiff === 0 ? 'E' : (totalDiff > 0 ? `+${totalDiff}` : `${totalDiff}`);
+
+        this.victoryModal.classList.add('active');
+    }
+
+    updateCamera(dt) {
+        const ball = this.ballState.pos;
+
+        if (this.cameraMode === 0) {
+            let angle = this.aimAngle;
+            if (!this.isDragging) {
+                if (this.ballState.isMoving) {
+                    angle = Math.atan2(this.ballState.vel.x, this.ballState.vel.z);
+                } else if (this.gameMode === 'classic') {
+                    angle = Math.atan2(this.holePos.x - ball.x, this.holePos.z - ball.z);
+                } else {
+                    const nextGate = this.wallPass.gates.find(g => !g.cleared);
+                    if (nextGate) angle = Math.atan2(nextGate.holeX - ball.x, nextGate.z - ball.z);
+                    else angle = 0;
+                }
+            }
+
+            const camDist = 6.4;
+            const camHeight = 3.5;
+
+            const desiredPos = new THREE.Vector3(
+                ball.x - Math.sin(angle) * camDist,
+                ball.y + camHeight,
+                ball.z - Math.cos(angle) * camDist
+            );
+
+            this.camera.position.lerp(desiredPos, dt * 5.2);
+            this.cameraTarget.lerp(new THREE.Vector3(ball.x, ball.y + 0.35, ball.z), dt * 6.2);
+            this.camera.lookAt(this.cameraTarget);
+        }
+        else if (this.cameraMode === 1) {
+            const desiredPos = new THREE.Vector3(ball.x, 22, ball.z + 0.1);
+            this.camera.position.lerp(desiredPos, dt * 4.0);
+            this.cameraTarget.lerp(ball, dt * 6.0);
+            this.camera.lookAt(this.cameraTarget);
+        }
+        else {
+            const time = performance.now() * 0.0006;
+            const orbitDist = 9.0;
+            const desiredPos = new THREE.Vector3(
+                ball.x + Math.sin(time) * orbitDist,
+                ball.y + 4.5,
+                ball.z + Math.cos(time) * orbitDist
+            );
+            this.camera.position.lerp(desiredPos, dt * 3.0);
+            this.cameraTarget.lerp(ball, dt * 5.0);
+            this.camera.lookAt(this.cameraTarget);
+        }
+    }
+
+    animate() {
+        requestAnimationFrame(this.animate);
+
+        const frameTime = Math.min(this.clock.getDelta(), 0.05);
+        this.accumulator += frameTime;
+
+        while (this.accumulator >= this.fixedDt) {
+            this.updatePhysics(this.fixedDt);
+            this.accumulator -= this.fixedDt;
+        }
+
+        this.updateCamera(frameTime);
+        this.renderer.render(this.scene, this.camera);
+    }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    window.game3D = new GolfGame3D();
+});
+</script>
+</body>
+</html>

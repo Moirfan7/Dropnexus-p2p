@@ -6,6 +6,14 @@ const os = require('os');
 const crypto = require('crypto');
 const https = require('https');
 
+// Prevent unexpected tunnel or network errors from crashing the background server
+process.on('uncaughtException', (err) => {
+    console.warn('[Server Handled Exception]:', err.message || err);
+});
+process.on('unhandledRejection', (reason) => {
+    console.warn('[Server Handled Rejection]:', reason);
+});
+
 // Tunneling Providers
 let cloudflared = null;
 try {
@@ -222,7 +230,10 @@ async function startTunnel(port) {
     if (cloudflared) {
         try {
             console.log('⚡ Starting Cloudflare Quick Tunnel...');
-            const tunnel = await cloudflared.tunnel({ port: port });
+            const tunnel = cloudflared.tunnel({ port: port });
+            if (tunnel && typeof tunnel.on === 'function') {
+                tunnel.on('error', () => {});
+            }
             const url = await tunnel.url;
             if (url) {
                 publicTunnelUrl = url;
