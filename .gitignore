@@ -4,7 +4,12 @@ node_modules/
 # Logs
 logs
 *.log
+launch_log.txt
+test_log.txt
 npm-debug.log*
+
+# Portable Node runtime (downloaded on demand)
+.node/
 yarn-debug.log*
 yarn-error.log*
 
